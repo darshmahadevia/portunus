@@ -24,7 +24,7 @@ func TestHTTPValidation(t *testing.T) {
 	}
 	provider := httptest.NewServer(fake)
 	defer provider.Close()
-	proxy, err := gateway.New(gateway.Config{ProviderURL: provider.URL})
+	proxy, err := gateway.New(gateway.Config{Providers: []gateway.ProviderConfig{{ID: "primary", Kind: "fake", Model: "fake", URL: provider.URL + "/v1/chat"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestHTTPValidation(t *testing.T) {
 		{"missing messages", "POST", "application/json", `{}`, 400},
 		{"no messages", "POST", "application/json", `{"messages":[]}`, 400},
 		{"33 messages", "POST", "application/json", `{"messages":[` + strings.Repeat(message+",", 32) + message + `]}`, 400},
-		{"unknown field", "POST", "application/json", `{"messages":[` + message + `],"model":"fake"}`, 400},
+		{"unknown field", "POST", "application/json", `{"messages":[` + message + `],"extra":true}`, 400},
 		{"unknown message field", "POST", "application/json", `{"messages":[{"role":"user","content":"hello","extra":0}]}`, 400},
 		{"invalid role", "POST", "application/json", `{"messages":[{"role":"tool","content":"hello"}]}`, 400},
 		{"missing role", "POST", "application/json", `{"messages":[{"content":"hello"}]}`, 400},
@@ -68,11 +68,16 @@ func TestHTTPValidation(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			for _, test := range cases {
 				t.Run(test.name, func(t *testing.T) {
-					request, err := http.NewRequest(test.method, endpoint+"/v1/chat", strings.NewReader(test.body))
+					bodyInput := test.body
+					if name == "fake" && strings.HasPrefix(test.name, "oversized") {
+						bodyInput += strings.Repeat(" ", 512<<10)
+					}
+					request, err := http.NewRequest(test.method, endpoint+"/v1/chat", strings.NewReader(bodyInput))
 					if err != nil {
 						t.Fatal(err)
 					}
 					request.Header.Set("Content-Type", test.mediaType)
+					request.Header.Set("Authorization", "Bearer demo-key")
 					response, err := (&http.Client{Timeout: 5 * time.Second}).Do(request)
 					if err != nil {
 						t.Fatal(err)
@@ -99,7 +104,7 @@ func TestHTTPValidation(t *testing.T) {
 
 func TestHealthAndUnknownRoutes(t *testing.T) {
 	provider, _ := fakeprovider.New(fakeprovider.DefaultConfig())
-	proxy, _ := gateway.New(gateway.Config{ProviderURL: "http://127.0.0.1:1"})
+	proxy, _ := gateway.New(gateway.Config{Providers: []gateway.ProviderConfig{{ID: "primary", Kind: "fake", Model: "fake", URL: "http://127.0.0.1:1/v1/chat"}}})
 	for name, handler := range map[string]http.Handler{"fake": provider, "gateway": proxy} {
 		t.Run(name, func(t *testing.T) {
 			server := httptest.NewServer(handler)

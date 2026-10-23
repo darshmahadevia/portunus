@@ -1,0 +1,56 @@
+Processes: 595 total, 5 running, 590 sleeping, 4273 threads 
+2026/10/23 13:51:57
+Load Avg: 3.33, 3.58, 3.56 
+CPU usage: 27.22% user, 22.27% sys, 50.49% idle 
+SharedLibs: 576M resident, 111M data, 88M linkedit.
+MemRegions: 606036 total, 4040M resident, 206M private, 1914M shared.
+PhysMem: 15G used (2828M wired, 4979M compressor), 148M unused.
+VM: 319T vsize, 57G framework vsize, 29165(0) swapins, 97012(0) swapouts.
+Networks: packets: 8531477/9686M in, 7289699/9228M out.
+Disks: 20346872/429G read, 10387637/200G written.
+
+PID    COMMAND          %CPU TIME     #TH MEM  
+43439  portunus         0.0  00:00.02 13  9345K
+43413  portunus-bench-p 0.0  00:00.01 14  7777K
+Processes: 599 total, 3 running, 596 sleeping, 4325 threads 
+2026/10/23 13:51:58
+Load Avg: 3.33, 3.58, 3.56 
+CPU usage: 21.74% user, 12.47% sys, 65.77% idle 
+SharedLibs: 576M resident, 111M data, 88M linkedit.
+MemRegions: 636 total, 22M resident, 206M private, 1925M shared.
+PhysMem: 15G used (2600M wired, 4985M compressor), 219M unused.
+VM: 321T vsize, 57G framework vsize, 29165(0) swapins, 97012(0) swapouts.
+Networks: packets: 8545681/9688M in, 7303891/9229M out.
+Disks: 20347852/429G read, 10388054/200G written.
+
+PID    COMMAND          %CPU TIME     #TH MEM  
+43413  portunus-bench-p 11.6 00:00.18 16  11M+ 
+43439  portunus         10.2 00:00.16 14  12M+ 
+Processes: 599 total, 3 running, 596 sleeping, 4319 threads 
+2026/10/23 13:51:59
+Load Avg: 3.33, 3.58, 3.56 
+CPU usage: 16.68% user, 11.82% sys, 71.49% idle 
+SharedLibs: 576M resident, 111M data, 88M linkedit.
+MemRegions: 0 total, 0B resident, 206M private, 1925M shared.
+PhysMem: 15G used (2625M wired, 4981M compressor), 216M unused.
+VM: 321T vsize, 57G framework vsize, 29165(0) swapins, 97012(0) swapouts.
+Networks: packets: 8579075/9691M in, 7337252/9233M out.
+Disks: 20347978/429G read, 10388079/200G written.
+
+PID    COMMAND          %CPU TIME     #TH MEM  
+43439  portunus         42.9 00:00.62 16  13M+ 
+43413  portunus-bench-p 14.1 00:00.33 16  11M+ 
+Processes: 594 total, 4 running, 590 sleeping, 4259 threads 
+2026/10/23 13:52:00
+Load Avg: 3.22, 3.55, 3.55 
+CPU usage: 21.6% user, 12.14% sys, 66.79% idle 
+SharedLibs: 576M resident, 111M data, 88M linkedit.
+MemRegions: 0 total, 0B resident, 206M private, 1925M shared.
+PhysMem: 15G used (2824M wired, 4978M compressor), 191M unused.
+VM: 319T vsize, 57G framework vsize, 29165(0) swapins, 97012(0) swapouts.
+Networks: packets: 8620552/9696M in, 7378690/9237M out.
+Disks: 20348540/429G read, 10388286/200G written.
+
+PID    COMMAND          %CPU TIME     #TH MEM  
+43439  portunus         54.5 00:01.20 16  13M+ 
+43413  portunus-bench-p 23.1 00:00.58 16  11M+ 

@@ -1,0 +1,12 @@
+{
+  "revision":"compatible-1",
+  "providers":[{
+    "id":"compatible", "kind":"openaicompat",
+    "url":"https://api.openai.com/v1/chat/completions",
+    "model":"replace-with-model", "apiKeyEnv":"PORTUNUS_PROVIDER_API_KEY",
+    "inputMicrosPerMillion":1000000, "outputMicrosPerMillion":2000000,
+    "maxConcurrent":16
+  }],
+  "routes":{"general":["compatible"]},
+  "clients":[{"id":"local", "keyEnv":"PORTUNUS_CLIENT_KEY", "rpm":60, "burst":10, "budgetMicros":1000000}]
+}

@@ -1,0 +1,192 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-23T17:55:43.029467+00:00",
+  "title": "Design System: Portunus",
+  "extensions": {
+    "colorMeta": {
+      "mint": {
+        "role": "primary",
+        "displayName": "Mint action"
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Graphite canvas"
+      },
+      "workspace": {
+        "role": "neutral",
+        "displayName": "Graphite workspace"
+      },
+      "good": {
+        "role": "semantic",
+        "displayName": "Success text"
+      },
+      "warn": {
+        "role": "semantic",
+        "displayName": "Warning text"
+      },
+      "bad": {
+        "role": "semantic",
+        "displayName": "Error text"
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Page heading",
+        "purpose": "Compact page title; 24px on mobile."
+      },
+      "body": {
+        "displayName": "System UI",
+        "purpose": "Inter-first platform fallback stack; no bundled font."
+      },
+      "measurement": {
+        "displayName": "Tabular measurement",
+        "purpose": "Metrics; 21px at widths up to 1150px."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "control-transition",
+        "value": "background-color 0.15s ease, border-color 0.15s ease",
+        "purpose": "Buttons and links, only under prefers-reduced-motion: no-preference."
+      },
+      {
+        "name": "connected-dot",
+        "value": "connect 0.6s cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Single color animation from #82928a to #9dddbb, only under prefers-reduced-motion: no-preference."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "(min-width: 1500px)"
+      },
+      {
+        "name": "stack-overview",
+        "value": "(max-width: 1150px)"
+      },
+      {
+        "name": "mobile",
+        "value": "(max-width: 760px)"
+      }
+    ],
+    "focus": {
+      "value": "2px solid var(--mint)",
+      "offset": "3px",
+      "purpose": "Buttons, links, inputs, textareas, selects, and focusable scroll regions."
+    },
+    "evidence": {
+      "sources": [
+        "PRODUCT.md",
+        "docs/dashboard-brief.md",
+        ".impeccable/surfaces/web-src-main-tsx.md",
+        "web/src/main.tsx",
+        "web/src/style.css",
+        "web/src/api.ts"
+      ],
+      "captures": [
+        {
+          "path": ".impeccable/review/desktop.png",
+          "width": 1440,
+          "height": 2588
+        },
+        {
+          "path": ".impeccable/review/mobile.png",
+          "width": 390,
+          "height": 3363
+        }
+      ],
+      "provenance": "Captured application pixels. No generated illustrations or raster assets in the app. No approved image composition; extracted from code and rendered output.",
+      "review": "Supplied independent GPT-6.1 Sol medium finish review: SHIP; checked text contrast pairs above 4.5:1. Not a new exhaustive contrast audit.",
+      "extraction": "Primitive tokens live in DESIGN.md frontmatter. No synthetic tonal ramps or invented spacing scale."
+    }
+  },
+  "components": [
+    {
+      "name": "Primary button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Source button variant; hover, keyboard focus, and disabled styles included.",
+      "html": "<button class=\"ds-primary\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m7 5-5 7 5 7M13 5l-3 14M17 5l5 7-5 7\"/></svg>Send request</button>",
+      "css": ".ds-primary{font-family:Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:13px;line-height:1.5;min-height:40px;border:1px solid #39424e;border-radius:6px;padding:8px 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:500;cursor:pointer;background:var(--mint,#a4e2c6);color:#10281d;border-color:var(--mint,#a4e2c6);}.ds-primary:hover:not(:disabled){background:#beeeda;border-color:#beeeda}.ds-primary:focus-visible{outline:2px solid var(--mint,#a4e2c6);outline-offset:3px}.ds-primary:disabled{opacity:.45;cursor:not-allowed}@media(prefers-reduced-motion:no-preference){.ds-primary{transition:background-color .15s ease,border-color .15s ease}}"
+    },
+    {
+      "name": "Secondary button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Source button variant; hover, keyboard focus, and disabled styles included.",
+      "html": "<button class=\"ds-secondary\">Restore primary</button>",
+      "css": ".ds-secondary{font-family:Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:13px;line-height:1.5;min-height:40px;border:1px solid #39424e;border-radius:6px;padding:8px 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:500;cursor:pointer;background:#1a2028;color:#e5e9ef;}.ds-secondary:hover:not(:disabled){background:#272f39;border-color:#657282}.ds-secondary:focus-visible{outline:2px solid var(--mint,#a4e2c6);outline-offset:3px}.ds-secondary:disabled{opacity:.45;cursor:not-allowed}@media(prefers-reduced-motion:no-preference){.ds-secondary{transition:background-color .15s ease,border-color .15s ease}}"
+    },
+    {
+      "name": "Quiet button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Source button variant; hover, keyboard focus, and disabled styles included.",
+      "html": "<button class=\"ds-quiet\">Refresh</button>",
+      "css": ".ds-quiet{font-family:Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;font-size:13px;line-height:1.5;min-height:40px;border:1px solid #39424e;border-radius:6px;padding:8px 12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:500;cursor:pointer;background:transparent;color:#bac3ce;border-color:transparent;}.ds-quiet:hover:not(:disabled){background:#272f39;border-color:#657282}.ds-quiet:focus-visible{outline:2px solid var(--mint,#a4e2c6);outline-offset:3px}.ds-quiet:disabled{opacity:.45;cursor:not-allowed}@media(prefers-reduced-motion:no-preference){.ds-quiet{transition:background-color .15s ease,border-color .15s ease}}"
+    },
+    {
+      "name": "Labeled field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "Native labeled input with mint focus and disabled treatment.",
+      "html": "<label class=\"ds-label\">Model alias<input class=\"ds-field\" value=\"general\" required></label>",
+      "css": ".ds-label{display:flex;flex-direction:column;gap:7px;font:12px/1.5 Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;color:#c8d1dc}.ds-field{font:13px/1.5 Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;background:#0d1218;border:1px solid #39424e;border-radius:5px;padding:10px 11px;color:#edf1f5;width:100%;max-width:100%;min-height:42px;caret-color:var(--mint,#a4e2c6)}.ds-field::placeholder{color:#96a3b3}.ds-field:focus-visible{outline:2px solid var(--mint,#a4e2c6);outline-offset:3px}.ds-field:disabled{opacity:.6}"
+    },
+    {
+      "name": "Main navigation",
+      "kind": "nav",
+      "refersTo": "nav-current",
+      "description": "Current link plus default link; horizontal at the shipped mobile breakpoint.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Main navigation\"><a href=\"#overview\" aria-current=\"page\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z\"/></svg>Overview</a><a href=\"#requests\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M8 5h13M8 12h13M8 19h13M3 5h.01M3 12h.01M3 19h.01\"/></svg>Requests</a><a href=\"#playground\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m7 5-5 7 5 7M13 5l-3 14M17 5l5 7-5 7\"/></svg>Playground</a></nav>",
+      "css": ".ds-nav{display:flex;flex-direction:column;gap:6px;font:13px/1.5 Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}.ds-nav a{display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:6px;color:#aab4c1;text-decoration:none;min-height:42px}.ds-nav a:hover{background:#171c23;color:#f3f6f9}.ds-nav a[aria-current]{color:var(--mint,#a4e2c6);background:#192922}.ds-nav a:focus-visible{outline:2px solid var(--mint,#a4e2c6);outline-offset:3px}@media(max-width:760px){.ds-nav{flex-direction:row;gap:5px}.ds-nav a{flex:1;justify-content:center;padding:10px 8px;border-radius:5px 5px 0 0;font-size:12px;gap:8px}}@media(prefers-reduced-motion:no-preference){.ds-nav a{transition:background-color .15s ease,border-color .15s ease}}.ds-nav svg{flex:none}"
+    },
+    {
+      "name": "Status badges",
+      "kind": "chip",
+      "refersTo": "badge",
+      "description": "Informational neutral, success, warning, and error labels; no interactive states.",
+      "html": "<div class=\"ds-badges\"><span class=\"ds-badge\">Ready</span><span class=\"ds-badge ds-good\">success</span><span class=\"ds-badge ds-warn\">open</span><span class=\"ds-badge ds-bad\">error</span></div>",
+      "css": ".ds-badges{display:flex;flex-wrap:wrap;gap:8px}.ds-badge{display:inline-flex;align-items:center;font:11px/1.5 Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;padding:3px 7px;border-radius:4px;background:#252c35;color:#c7d0db;white-space:nowrap}.ds-good{background:#1d332a;color:#b0e7ca}.ds-warn{background:#372b1b;color:#f1c589}.ds-bad{background:#3b2329;color:#ffb4b2}"
+    },
+    {
+      "name": "Response container",
+      "kind": "card",
+      "refersTo": "response",
+      "description": "Inset response surface in its ready state; output wraps and scrolls.",
+      "html": "<section class=\"ds-response\"><header class=\"ds-response-header\"><h3>Response</h3><span class=\"ds-response-badge\">Ready</span></header><pre>Your response will appear here.</pre></section>",
+      "css": ".ds-response{background:#0c1117;color:#e5e9ef;border:1px solid #303946;border-radius:7px;min-width:0;display:flex;flex-direction:column;padding:18px;font:13px/1.5 Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}.ds-response-header{display:flex;justify-content:space-between;gap:10px;align-items:center}.ds-response h3{margin:0;font-size:14px;font-weight:600}.ds-response-badge{font-size:11px;line-height:1.5;padding:3px 7px;border-radius:4px;background:#252c35;color:#c7d0db}.ds-response pre{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;font:12px/1.8 \"SFMono-Regular\",Consolas,monospace;color:#c9d5de;flex:1;min-height:190px;max-height:360px;overflow:auto;margin:20px 0}@media(max-width:760px){.ds-response{min-height:260px}.ds-response pre{min-height:140px}}"
+    },
+    {
+      "name": "Evidence table",
+      "kind": "custom",
+      "description": "Illustrative row content in the shipped table treatment; the scroll region is keyboard focusable.",
+      "html": "<div class=\"ds-scroll\" role=\"region\" aria-label=\"Example request activity, scroll horizontally\" tabindex=\"0\"><table class=\"ds-table\"><thead><tr><th>Client / request</th><th>Provider path</th><th>Outcome</th><th>Duration</th></tr></thead><tbody><tr><td>demo</td><td>primary \u2192 backup</td><td><span class=\"ds-success\">success</span></td><td class=\"ds-number\">64 ms</td></tr></tbody></table></div>",
+      "css": ".ds-scroll{width:100%;overflow:auto;border-top:1px solid var(--line,#2a3039);border-bottom:1px solid var(--line,#2a3039);background:#10141a;color:#e5e9ef}.ds-scroll:focus-visible{outline:2px solid var(--mint,#a4e2c6);outline-offset:3px}.ds-table{width:100%;border-collapse:collapse;text-align:left;white-space:nowrap;font:12px/1.5 Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif}.ds-table th{font-size:10px;letter-spacing:.05em;text-transform:uppercase;font-weight:500;color:#9da9b7;background:#131920;padding:12px 13px}.ds-table td{padding:13px;border-top:1px solid #242c35}.ds-table td:first-child,.ds-table th:first-child{padding-left:10px}.ds-table tbody tr:hover{background:#141b23}.ds-number{font-family:\"SFMono-Regular\",Consolas,monospace;font-variant-numeric:tabular-nums}.ds-success{font-size:11px;line-height:1.5;padding:3px 7px;border-radius:4px;color:#b0e7ca;background:#1d332a}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Engineering field notes",
+    "overview": "Engineering field notes: compact system type, aligned measurements, graphite surfaces, and quiet separators. Mint identifies the main action and current navigation; amber and red carry meaningful state. The interface stays flat and restrained, without gradients, glow, marketing treatments, or decorative imagery.",
+    "keyCharacteristics": [
+      "Compact headings and tabular measurements.",
+      "Flat sections divided by hairlines.",
+      "Explicit status text alongside color.",
+      "Responsive stacking with locally scrollable tables."
+    ],
+    "rules": [],
+    "dos": [
+      "Do reuse the documented control, field, badge, and response treatments.",
+      "Do pair status colors with labels and preserve visible keyboard focus.",
+      "Do wrap long output and identifiers; keep wide tables inside their own scroll regions.",
+      "Do preserve empty, stale, pending, interrupted, and error messages as distinct states."
+    ],
+    "donts": [
+      "Don't introduce gradients, glow, decorative illustrations, or marketing copy.",
+      "Don't replace missing observations with invented traffic or a decorative chart.",
+      "Don't present partial streaming output as a completed response.",
+      "Don't assume Inter is bundled; the implementation uses a system fallback stack."
+    ]
+  }
+}

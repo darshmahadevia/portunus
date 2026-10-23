@@ -55,7 +55,7 @@ func TestConfigIsCopied(t *testing.T) {
 	defer response.Body.Close()
 	body, err := io.ReadAll(response.Body)
 	<-mutated
-	if err != nil || string(body) != "event: delta\ndata: {\"text\":\"original\"}\n\nevent: done\ndata: {}\n\n" {
+	if err != nil || !strings.HasPrefix(string(body), "event: delta\ndata: {\"text\":\"original\"}\n\nevent: done\ndata: {\"usage\":") {
 		t.Fatalf("config mutation affected response: %q, %v", body, err)
 	}
 }
@@ -170,5 +170,48 @@ func TestNonstreamCutAbortsBeforeJSON(t *testing.T) {
 	}
 	if err == nil {
 		t.Fatal("cut nonstream response appeared successful")
+	}
+}
+
+func TestRuntimeControlIsSnapshotPerRequestAndOutputCapped(t *testing.T) {
+	config := fakeprovider.DefaultConfig()
+	config.ChunkDelay = 30 * time.Millisecond
+	handler, err := fakeprovider.New(config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(handler)
+	defer server.Close()
+	response, err := http.Post(server.URL+"/v1/chat", "application/json", strings.NewReader(requestBody))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	first := make([]byte, len("event: delta\ndata: {\"text\":\"Hello\"}\n\n"))
+	if _, err = io.ReadFull(response.Body, first); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = handler.Update(fakeprovider.Control{Status: 503, CutAfter: 0}); err != nil {
+		t.Fatal(err)
+	}
+	rest, err := io.ReadAll(response.Body)
+	if err != nil || !strings.Contains(string(rest), "event: done") || !strings.Contains(string(rest), `"authoritative":true`) {
+		t.Fatalf("control altered in-flight request: %q %v", rest, err)
+	}
+	if _, err = handler.Update(fakeprovider.Control{Status: 200, CutAfter: -1}); err != nil {
+		t.Fatal(err)
+	}
+	capped, err := http.Post(server.URL+"/v1/chat", "application/json", strings.NewReader(`{"messages":[{"role":"user","content":"hi"}],"max_output_tokens":2}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer capped.Body.Close()
+	body, err := io.ReadAll(capped.Body)
+	if err != nil || !strings.Contains(string(body), `"text":"He"`) || !strings.Contains(string(body), `"outputTokens":2`) {
+		t.Fatalf("output cap ignored: %q %v", body, err)
+	}
+	snapshot := handler.Snapshot()
+	if snapshot.Requests != 2 || snapshot.Completed != 2 || snapshot.Revision != 3 {
+		t.Fatalf("incorrect work counters: %+v", snapshot)
 	}
 }

@@ -2,9 +2,11 @@ package wire
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"mime"
 	"net/http"
 	"strings"
@@ -31,7 +33,11 @@ func ReadChatRequest(w http.ResponseWriter, r *http.Request) (ChatRequest, []byt
 		WriteError(w, http.StatusUnsupportedMediaType, "unsupported_media_type", "Use application/json.")
 		return request, nil, false
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBytes)
+	limit := int64(MaxRequestBytes)
+	if r.Context().Value(internalLimitKey{}) == true {
+		limit = 512 << 10
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		var tooLarge *http.MaxBytesError
@@ -66,6 +72,22 @@ func ReadChatRequest(w http.ResponseWriter, r *http.Request) (ChatRequest, []byt
 			return request, nil, false
 		}
 	}
+	var fields map[string]json.RawMessage
+	_ = json.Unmarshal(body, &fields)
+	if raw, exists := fields["max_output_tokens"]; exists && (string(raw) == "null" || request.MaxOutputTokens == 0) {
+		WriteError(w, 400, "invalid_request", "max_output_tokens must be 1..4096.")
+		return request, nil, false
+	}
+	if request.Model == "" {
+		request.Model = "general"
+	}
+	if request.MaxOutputTokens == 0 {
+		request.MaxOutputTokens = 256
+	}
+	if request.MaxOutputTokens < 1 || request.MaxOutputTokens > 4096 || math.IsNaN(request.Temperature) || math.IsInf(request.Temperature, 0) || request.Temperature < 0 || request.Temperature > 2 || len(request.Model) > 128 {
+		WriteError(w, 400, "invalid_request", "Invalid model or generation settings.")
+		return request, nil, false
+	}
 	return request, body, true
 }
 
@@ -77,4 +99,11 @@ func Healthz(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = io.WriteString(w, "{\"status\":\"ok\"}\n")
+}
+
+type internalLimitKey struct{}
+
+// InternalRequest permits normalized JSON expansion while retaining a bounded provider input.
+func InternalRequest(r *http.Request) *http.Request {
+	return r.WithContext(context.WithValue(r.Context(), internalLimitKey{}, true))
 }

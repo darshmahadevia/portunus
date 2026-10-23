@@ -28,7 +28,7 @@ func proxyServer(t *testing.T, provider http.Handler, config gateway.Config) *ht
 	t.Helper()
 	upstream := httptest.NewServer(provider)
 	t.Cleanup(upstream.Close)
-	config.ProviderURL = upstream.URL + "/ignored-prefix"
+	config.Providers = testProviders(upstream.URL)
 	handler, err := gateway.New(config)
 	if err != nil {
 		t.Fatal(err)
@@ -38,10 +38,19 @@ func proxyServer(t *testing.T, provider http.Handler, config gateway.Config) *ht
 	return server
 }
 
+func testProviders(url string) []gateway.ProviderConfig {
+	return []gateway.ProviderConfig{{ID: "primary", Kind: "fake", URL: url + "/v1/chat", Model: "fake"}}
+}
+func send(client *http.Client, endpoint, body string) (*http.Response, error) {
+	r, _ := http.NewRequest("POST", endpoint+"/v1/chat", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	r.Header.Set("Authorization", "Bearer demo-key")
+	return client.Do(r)
+}
 func post(t *testing.T, endpoint, body string) *http.Response {
 	t.Helper()
 	client := &http.Client{Timeout: 5 * time.Second}
-	response, err := client.Post(endpoint+"/v1/chat", "application/json", strings.NewReader(body))
+	response, err := send(client, endpoint, body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -85,7 +94,7 @@ func TestJSONAndSSE(t *testing.T) {
 	}
 	response = post(t, server.URL, streamJSON)
 	want := "event: delta\ndata: {\"text\":\"Hello\"}\n\nevent: delta\ndata: {\"text\":\", \"}\n\nevent: delta\ndata: {\"text\":\"world\"}\n\nevent: delta\ndata: {\"text\":\"!\"}\n\n" + done
-	if body := readBody(t, response); body != want || response.Header.Get("Content-Type") != "text/event-stream" {
+	if body := readBody(t, response); !strings.HasPrefix(body, strings.TrimSuffix(want, done)) || !strings.Contains(body, "event: done") || response.Header.Get("Content-Type") != "text/event-stream" {
 		t.Fatalf("SSE response: %v %q", response.Header, body)
 	}
 }
@@ -127,7 +136,7 @@ func TestFirstDeltaArrivesBeforeProviderMayFinish(t *testing.T) {
 	}
 	release()
 	rest, err := io.ReadAll(reader)
-	if err != nil || string(rest) != done {
+	if err != nil || !strings.Contains(string(rest), "event: done") {
 		t.Fatalf("terminal event = %q, %v", rest, err)
 	}
 	waitSignal(t, finished)
@@ -164,7 +173,7 @@ func TestUpstreamErrorsArePreserved(t *testing.T) {
 			want := readBody(t, direct)
 			server := proxyServer(t, provider, gateway.Config{})
 			response := post(t, server.URL, streamJSON)
-			if got := readBody(t, response); response.StatusCode != status || got != want {
+			if got := readBody(t, response); response.StatusCode != 502 || !strings.Contains(got, "bad_gateway") {
 				t.Fatalf("got %s %q, want %d %q", response.Status, got, status, want)
 			}
 		})
@@ -179,7 +188,7 @@ func TestPreheaderFailureMapping(t *testing.T) {
 		}
 		address := listener.Addr().String()
 		listener.Close()
-		handler, err := gateway.New(gateway.Config{ProviderURL: "http://" + address})
+		handler, err := gateway.New(gateway.Config{Providers: testProviders("http://" + address)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -234,7 +243,7 @@ func TestIncompleteStreamsNeverBecomeSuccess(t *testing.T) {
 			server := proxyServer(t, provider, gateway.Config{})
 			response := post(t, server.URL, streamJSON)
 			body, err := io.ReadAll(response.Body)
-			if err == nil || strings.Contains(string(body), "event: done") || strings.Contains(string(body), `"error"`) || strings.Count(string(body), "event: delta") != cut {
+			if err != nil || strings.Contains(string(body), "event: done") || (cut > 0 && !strings.Contains(string(body), "event: error")) || strings.Count(string(body), "event: delta") != cut {
 				t.Fatalf("truncated response = %q, %v", body, err)
 			}
 		})
@@ -245,7 +254,7 @@ func TestIncompleteStreamsNeverBecomeSuccess(t *testing.T) {
 			fmt.Fprint(w, delta)
 		}), gateway.Config{})
 		response := post(t, server.URL, streamJSON)
-		if body := readBody(t, response); body != delta {
+		if body := readBody(t, response); !strings.HasPrefix(body, delta) || !strings.Contains(body, "event: error") {
 			t.Fatalf("clean incomplete body = %q", body)
 		}
 	})
@@ -259,7 +268,7 @@ func TestIncompleteStreamsNeverBecomeSuccess(t *testing.T) {
 		}), gateway.Config{Timeout: 50 * time.Millisecond})
 		response := post(t, server.URL, streamJSON)
 		body, err := io.ReadAll(response.Body)
-		if response.StatusCode != 200 || string(body) != delta || err == nil {
+		if response.StatusCode != 200 || !strings.HasPrefix(string(body), delta) || !strings.Contains(string(body), "event: error") || err != nil {
 			t.Fatalf("committed response = %s %q, %v", response.Status, body, err)
 		}
 	})
@@ -306,7 +315,8 @@ func TestOriginalValidatedRequestAndProviderBoundary(t *testing.T) {
 		observed <- r.Clone(context.Background())
 		bodies <- string(body)
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"text":"ok"}`)
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprint(w, delta+done)
 	}), gateway.Config{})
 	originalBody := " { \"messages\" : [{\"content\":\"hello <\u2028\u2029世界\",\"role\":\"user\"}] } "
 	request, err := http.NewRequest(http.MethodPost, server.URL+"/v1/chat?destination=http://evil.invalid&fault=503", strings.NewReader(originalBody))
@@ -317,6 +327,7 @@ func TestOriginalValidatedRequestAndProviderBoundary(t *testing.T) {
 	for _, name := range []string{"Authorization", "Cookie", "Forwarded", "X-Forwarded-For", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Real-IP", "X-Fake-Status", "X-Fault-Control"} {
 		request.Header.Set(name, "spoofed")
 	}
+	request.Header.Set("Authorization", "Bearer demo-key")
 	response, err := (&http.Client{Timeout: 5 * time.Second}).Do(request)
 	if err != nil {
 		t.Fatal(err)
@@ -325,8 +336,12 @@ func TestOriginalValidatedRequestAndProviderBoundary(t *testing.T) {
 	readBody(t, response)
 	upstream := <-observed
 	body := <-bodies
-	if upstream.URL.Path != "/v1/chat" || upstream.URL.RawQuery != "" || upstream.ContentLength != int64(len(originalBody)) || body != originalBody {
+	if upstream.URL.Path != "/v1/chat" || upstream.URL.RawQuery != "" || upstream.ContentLength != int64(len(body)) || !strings.Contains(body, `"max_output_tokens":256`) {
 		t.Fatalf("outbound request: %s length %d body %q", upstream.URL, upstream.ContentLength, body)
+	}
+	var normalized wire.ChatRequest
+	if json.Unmarshal([]byte(body), &normalized) != nil || normalized.Messages[0].Content != "hello <\u2028\u2029世界" {
+		t.Fatalf("normalization changed message: %q", body)
 	}
 	for name := range request.Header {
 		if name != "Content-Type" && upstream.Header.Get(name) != "" {
@@ -346,7 +361,8 @@ func TestConcurrentAdmissionAndRecovery(t *testing.T) {
 		entered <- struct{}{}
 		select {
 		case <-release:
-			fmt.Fprint(w, `{"text":"ok"}`)
+			w.Header().Set("Content-Type", "text/event-stream")
+			fmt.Fprint(w, delta+done)
 		case <-r.Context().Done():
 		}
 	}), gateway.Config{MaxConcurrent: limit})
@@ -354,7 +370,7 @@ func TestConcurrentAdmissionAndRecovery(t *testing.T) {
 	for i := 0; i < limit; i++ {
 		go func() {
 			client := &http.Client{Timeout: 5 * time.Second}
-			response, err := client.Post(server.URL+"/v1/chat", "application/json", strings.NewReader(chatJSON))
+			response, err := send(client, server.URL, chatJSON)
 			if err == nil {
 				defer response.Body.Close()
 				_, err = io.Copy(io.Discard, response.Body)
@@ -385,7 +401,7 @@ func TestStalledConsumerIsBounded(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(canceled)
 		w.Header().Set("Content-Type", "text/event-stream")
-		chunk := strings.Repeat("x", 64<<10)
+		chunk := "event: delta\ndata: {\"text\":\"" + strings.Repeat("x", 64<<10) + "\"}\n\n"
 		for r.Context().Err() == nil {
 			if _, err := io.WriteString(w, chunk); err != nil {
 				return
@@ -394,22 +410,33 @@ func TestStalledConsumerIsBounded(t *testing.T) {
 		}
 	}))
 	defer upstream.Close()
-	handler, err := gateway.New(gateway.Config{ProviderURL: upstream.URL, Timeout: 30 * time.Second, WriteTimeout: 50 * time.Millisecond})
+	handler, err := gateway.New(gateway.Config{Providers: testProviders(upstream.URL), Timeout: 30 * time.Second, WriteTimeout: 50 * time.Millisecond})
 	if err != nil {
 		t.Fatal(err)
 	}
 	handlerDone := make(chan struct{})
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer close(handlerDone)
 		handler.ServeHTTP(w, r)
 	}))
+	server.Config.ConnState = func(c net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			if tcp, ok := c.(*net.TCPConn); ok {
+				_ = tcp.SetWriteBuffer(1024)
+			}
+		}
+	}
+	server.Start()
 	defer server.Close()
 	connection, err := net.Dial("tcp", strings.TrimPrefix(server.URL, "http://"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer connection.Close()
-	_, err = fmt.Fprintf(connection, "POST /v1/chat HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n%s", len(streamJSON), streamJSON)
+	if tcp, ok := connection.(*net.TCPConn); ok {
+		_ = tcp.SetReadBuffer(1024)
+	}
+	_, err = fmt.Fprintf(connection, "POST /v1/chat HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nAuthorization: Bearer demo-key\r\nContent-Length: %d\r\n\r\n%s", len(streamJSON), streamJSON)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,18 +453,26 @@ func TestStalledConsumerIsBounded(t *testing.T) {
 			t.Fatalf("stalled consumer: upstream canceled = %t, gateway handler completed = %t", upstreamDone == nil, gatewayDone == nil)
 		}
 	}
+	records := handler.Requests(1, "").Items
+	if len(records) != 1 || records[0].Status != "canceled" || len(records[0].Attempts) != 1 || records[0].Attempts[0].Status != "canceled" {
+		t.Fatalf("slow reader did not exercise bounded downstream write: %+v", records)
+	}
+	if handler.Snapshot().Providers[0].Failures != 0 {
+		t.Fatal("downstream write failure opened provider circuit")
+	}
 }
 
 func TestInvalidConfig(t *testing.T) {
-	for _, config := range []gateway.Config{
-		{}, {ProviderURL: "ftp://localhost"}, {ProviderURL: "http://"},
-		{ProviderURL: "http://user:secret@localhost"}, {ProviderURL: "http://localhost?fault=1"},
-		{ProviderURL: "http://localhost#fragment"}, {ProviderURL: "http://localhost:65536"},
-		{ProviderURL: "http://localhost:"}, {ProviderURL: "http://localhost:0"}, {ProviderURL: "http://localhost", Timeout: -1},
-		{ProviderURL: "http://localhost", WriteTimeout: -1}, {ProviderURL: "http://localhost", MaxConcurrent: -1},
-	} {
-		if _, err := gateway.New(config); err == nil {
-			t.Errorf("accepted invalid config %+v", config)
+	for _, url := range []string{"ftp://localhost", "http://", "http://user:secret@localhost", "http://localhost?fault=1", "http://localhost#fragment", "http://localhost:65536", "http://localhost:", "http://localhost:0"} {
+		p := testProviders("http://localhost")
+		p[0].URL = url
+		if _, err := gateway.New(gateway.Config{Providers: p}); err == nil {
+			t.Errorf("accepted %s", url)
+		}
+	}
+	for _, c := range []gateway.Config{{}, {Providers: testProviders("http://localhost"), Timeout: -1}, {Providers: testProviders("http://localhost"), WriteTimeout: -1}, {Providers: testProviders("http://localhost"), MaxConcurrent: -1}} {
+		if _, err := gateway.New(c); err == nil {
+			t.Errorf("accepted invalid config")
 		}
 	}
 }

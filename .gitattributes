@@ -1,0 +1,3 @@
+internal/dashboard/dist/** linguist-generated=true -whitespace
+docs/benchmarks/latest.json linguist-generated=true
+docs/benchmarks/profile-* linguist-generated=true -whitespace

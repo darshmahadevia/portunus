@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/darshmahadevia/portunus/internal/dashboard"
 	"github.com/darshmahadevia/portunus/internal/fakeprovider"
 	"github.com/darshmahadevia/portunus/internal/gateway"
 )
@@ -34,6 +35,9 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	flags.SetOutput(output)
 	gatewayAddress := flags.String("gateway-listen", "127.0.0.1:8080", "gateway loopback address")
 	fakeAddress := flags.String("fake-listen", "127.0.0.1:8081", "fake provider loopback address")
+	backupAddress := flags.String("backup-listen", "127.0.0.1:8082", "backup provider loopback address")
+	configPath := flags.String("config", "", "JSON configuration file (durations in nanoseconds)")
+	firstTimeout := flags.Duration("first-chunk-timeout", 300*time.Millisecond, "upstream first meaningful content deadline")
 	timeout := flags.Duration("timeout", 30*time.Second, "total gateway chat request timeout")
 	config := fakeprovider.DefaultConfig()
 	flags.DurationVar(&config.ChunkDelay, "fake-chunk-delay", config.ChunkDelay, "delay between fake chunks")
@@ -53,7 +57,7 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	if *timeout <= 0 {
 		return fmt.Errorf("timeout must be positive")
 	}
-	for _, address := range []string{*gatewayAddress, *fakeAddress} {
+	for _, address := range []string{*gatewayAddress, *fakeAddress, *backupAddress} {
 		if err := validateAddress(address); err != nil {
 			return err
 		}
@@ -73,7 +77,40 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 		return fmt.Errorf("listen gateway %s: %w", *gatewayAddress, err)
 	}
 	defer gatewayListener.Close()
-	proxy, err := gateway.New(gateway.Config{ProviderURL: "http://" + fakeListener.Addr().String(), Timeout: *timeout})
+	backupConfig := fakeprovider.DefaultConfig()
+	backup, err := fakeprovider.New(backupConfig)
+	if err != nil {
+		return err
+	}
+	backupListener, err := net.Listen("tcp", *backupAddress)
+	if err != nil {
+		return fmt.Errorf("listen backup: %w", err)
+	}
+	defer backupListener.Close()
+	engineConfig := gateway.DefaultConfig()
+	if *configPath != "" {
+		f, e := os.Open(*configPath)
+		if e != nil {
+			return fmt.Errorf("open config: %w", e)
+		}
+		engineConfig, e = gateway.LoadConfig(f)
+		f.Close()
+		if e != nil {
+			return fmt.Errorf("load config: %w", e)
+		}
+	}
+	if *configPath == "" {
+		engineConfig.Timeout = *timeout
+		engineConfig.FirstChunkTimeout = *firstTimeout
+	}
+	if len(engineConfig.Providers) == 0 {
+		engineConfig.Providers = []gateway.ProviderConfig{
+			{ID: "primary", Kind: "fake", URL: "http://" + fakeListener.Addr().String() + "/v1/chat", Model: "fake-primary", InputPrice: 1000000, OutputPrice: 2000000, Fake: fake},
+			{ID: "backup", Kind: "fake", URL: "http://" + backupListener.Addr().String() + "/v1/chat", Model: "fake-backup", InputPrice: 1000000, OutputPrice: 2000000, Fake: backup},
+		}
+	}
+	engineConfig.Dashboard = dashboard.Handler()
+	proxy, err := gateway.New(engineConfig)
 	if err != nil {
 		return err
 	}
@@ -82,15 +119,16 @@ func run(ctx context.Context, args []string, output io.Writer) error {
 	servers := []*http.Server{
 		newServer(baseContext, proxy),
 		newServer(baseContext, fake),
+		newServer(baseContext, backup),
 	}
-	listeners := []net.Listener{gatewayListener, fakeListener}
+	listeners := []net.Listener{gatewayListener, fakeListener, backupListener}
 	results := make(chan error, len(servers))
 	for i, server := range servers {
 		go func(server *http.Server, listener net.Listener) {
 			results <- server.Serve(listener)
 		}(server, listeners[i])
 	}
-	log.New(output, "", 0).Printf("ready gateway=http://%s fake=http://%s", gatewayListener.Addr(), fakeListener.Addr())
+	log.New(output, "", 0).Printf("ready gateway=http://%s fake=http://%s backup=http://%s", gatewayListener.Addr(), fakeListener.Addr(), backupListener.Addr())
 	var serveError error
 	completed := 0
 	select {

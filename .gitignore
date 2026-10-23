@@ -1,0 +1,11 @@
+/portunus
+/portunus-bench
+/coverage.out
+/artifacts/
+web/node_modules/
+web/.vite/
+.impeccable/mocks/
+.impeccable/review/
+.impeccable/build/
+.impeccable/*.local.json
+*.prof

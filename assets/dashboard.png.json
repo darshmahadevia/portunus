@@ -1,0 +1,8 @@
+{
+  "origin": "http://127.0.0.1:8080/",
+  "kind": "application screenshot",
+  "method": "Headless Chrome browser capture after real streaming and failover requests",
+  "viewport": {"width": 1440, "height": 1000},
+  "generated": false,
+  "description": "Local Portunus demo with a primary HTTP 503, backup completions, and an expanded attempt record. Values are observed demo data, not benchmark results."
+}

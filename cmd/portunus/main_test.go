@@ -37,7 +37,7 @@ func TestCLISignals(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			command := exec.Command(executable, "-test.run=^TestCLIHelper$", "--", "-gateway-listen=127.0.0.1:0", "-fake-listen=127.0.0.1:0", "-fake-chunk-delay=1h")
+			command := exec.Command(executable, "-test.run=^TestCLIHelper$", "--", "-gateway-listen=127.0.0.1:0", "-fake-listen=127.0.0.1:0", "-backup-listen=127.0.0.1:0", "-fake-chunk-delay=1h")
 			command.Env = append(os.Environ(), "PORTUNUS_TEST_PROCESS=1")
 			output, err := command.StderrPipe()
 			if err != nil {
@@ -60,12 +60,12 @@ func TestCLISignals(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("CLI did not become ready")
 			}
-			var gatewayURL, fakeURL string
-			if _, err := fmt.Sscanf(ready, "ready gateway=%s fake=%s", &gatewayURL, &fakeURL); err != nil {
+			var gatewayURL, fakeURL, backupURL string
+			if _, err := fmt.Sscanf(ready, "ready gateway=%s fake=%s backup=%s", &gatewayURL, &fakeURL, &backupURL); err != nil {
 				t.Fatalf("invalid ready output %q: %v", ready, err)
 			}
 			client := &http.Client{Timeout: 5 * time.Second}
-			for _, endpoint := range []string{gatewayURL, fakeURL} {
+			for _, endpoint := range []string{gatewayURL, fakeURL, backupURL} {
 				response, err := client.Get(endpoint + "/healthz")
 				if err != nil {
 					t.Fatal(err)
@@ -76,7 +76,10 @@ func TestCLISignals(t *testing.T) {
 					t.Fatalf("CLI health failed: %s", response.Status)
 				}
 			}
-			response, err := client.Post(gatewayURL+"/v1/chat", "application/json", strings.NewReader(`{"messages":[{"role":"user","content":"hello"}],"stream":true}`))
+			request, _ := http.NewRequest("POST", gatewayURL+"/v1/chat", strings.NewReader(`{"messages":[{"role":"user","content":"hello"}],"stream":true}`))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Authorization", "Bearer demo-key")
+			response, err := client.Do(request)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -98,6 +101,12 @@ func TestCLISignals(t *testing.T) {
 				}
 			case <-time.After(8 * time.Second):
 				t.Fatal("CLI ignored shutdown signal")
+			}
+			for _, endpoint := range []string{gatewayURL, fakeURL, backupURL} {
+				if res, err := client.Get(endpoint + "/healthz"); err == nil {
+					res.Body.Close()
+					t.Errorf("listener survived shutdown: %s", endpoint)
+				}
 			}
 			rest, _ := io.ReadAll(reader)
 			if strings.Contains(string(rest), "event: done") {
@@ -137,7 +146,7 @@ func TestCLIOccupiedPorts(t *testing.T) {
 	defer listener.Close()
 	for _, flag := range []string{"-gateway-listen=", "-fake-listen="} {
 		var output bytes.Buffer
-		args := []string{"-gateway-listen=127.0.0.1:0", "-fake-listen=127.0.0.1:0", flag + listener.Addr().String()}
+		args := []string{"-gateway-listen=127.0.0.1:0", "-fake-listen=127.0.0.1:0", "-backup-listen=127.0.0.1:0", flag + listener.Addr().String()}
 		if err := run(context.Background(), args, &output); err == nil || !strings.Contains(err.Error(), "listen") {
 			t.Fatalf("occupied port error = %v", err)
 		}

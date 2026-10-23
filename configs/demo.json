@@ -1,0 +1,8 @@
+{
+  "revision": "demo-1",
+  "routes": {"general": ["primary", "backup"]},
+  "clients": [
+    {"id":"demo", "key":"demo-key", "rpm":600, "burst":100, "budgetMicros":10000000},
+    {"id":"limited", "key":"limited-key", "rpm":2, "burst":2, "budgetMicros":1000}
+  ]
+}
