@@ -16,9 +16,18 @@ import {
   successSchema,
 } from "./api";
 import type { Fake, RequestRecord, Snapshot, Success } from "./api";
+import { budgetUsage, deriveTelemetry, mergeRequestRecords } from "./telemetry";
+import {
+  Histogram,
+  OutcomeChart,
+  ProviderVolumes,
+  Timeline,
+} from "./visualizations";
 import "./style.css";
 
+type WorkspaceOperation = "idle" | "request" | "demo" | "provider";
 type Data = {
+  epoch: number;
   snapshot: Snapshot;
   requests: RequestRecord[];
   nextCursor: string | null;
@@ -120,14 +129,22 @@ function useFeed() {
           }),
         ]);
         if (!disposed)
-          setFeed({
+          setFeed((previous) => ({
             kind: "live",
             data: {
+              epoch:
+                "data" in previous
+                  ? previous.data.epoch +
+                    (snapshot.uptimeMs < previous.data.snapshot.uptimeMs ||
+                    snapshot.sequence < previous.data.snapshot.sequence
+                      ? 1
+                      : 0)
+                  : 0,
               snapshot,
               requests: records.items,
               nextCursor: records.nextCursor,
             },
-          });
+          }));
       } catch (error) {
         if (!disposed)
           setFeed((previous) => ({
@@ -160,107 +177,93 @@ function useFeed() {
   }, [tick]);
   return { feed, refresh: useCallback(() => setTick((n) => n + 1), []) };
 }
-function Latency({ records }: { records: RequestRecord[] }) {
-  const measured = records.filter((r) => r.status !== "rejected");
-  const max = Math.max(1, ...measured.map((r) => r.durationMs));
-  const buckets = Array.from(
-    { length: 8 },
-    (_, i) =>
-      measured.filter(
-        (r) => Math.min(7, Math.floor((r.durationMs / max) * 8)) === i,
-      ).length,
-  );
-  const peak = Math.max(1, ...buckets);
-  return (
-    <section className="latency">
-      <div className="section-title">
-        <h2>Request duration</h2>
-        <span className="muted">{measured.length} retained observations</span>
-      </div>
-      {measured.length ? (
-        <>
-          <svg
-            className="chart"
-            viewBox="0 0 440 154"
-            role="img"
-            aria-label={`Duration histogram, ${measured.length} requests, range zero to ${Math.ceil(max)} milliseconds`}
-          >
-            {[0, 0.5, 1].map((n) => (
-              <g key={n}>
-                <line
-                  x1="35"
-                  x2="425"
-                  y1={115 - n * 90}
-                  y2={115 - n * 90}
-                  className="gridline"
-                />
-                <text x="27" y={119 - n * 90} textAnchor="end">
-                  {Math.round(peak * n)}
-                </text>
-              </g>
-            ))}
-            {buckets.map((count, i) => (
-              <rect
-                key={i}
-                x={42 + i * 48}
-                y={115 - (count / peak) * 90}
-                width="33"
-                height={(count / peak) * 90}
-                rx="2"
-              >
-                <title>
-                  {Math.round((i * max) / 8)}–{Math.round(((i + 1) * max) / 8)}{" "}
-                  ms: {count} requests
-                </title>
-              </rect>
-            ))}
-            <text x="35" y="140">
-              0 ms
-            </text>
-            <text x="425" y="140" textAnchor="end">
-              {Math.ceil(max)} ms
-            </text>
-            <text x="35" y="13">
-              Requests
-            </text>
-          </svg>
-          <p className="caption">
-            End-to-end duration · admission rejections excluded
-          </p>
-        </>
-      ) : (
-        <div className="chart-empty">
-          <span className="empty-rule" />
-          <strong>No latency observations</strong>
-          <p>Send a request to measure the gateway.</p>
-        </div>
-      )}
-    </section>
-  );
-}
 function Activity({
   records,
   full,
   nextCursor,
   refresh,
+  maxRecords,
 }: {
   records: RequestRecord[];
   full: boolean;
   nextCursor: string | null;
   refresh: () => void;
+  maxRecords: number;
 }) {
-  const [query, setQuery] = useState("");
+  const requestedId = full
+    ? new URLSearchParams(location.search).get("request")
+    : null;
+  const [query, setQuery] = useState(requestedId ?? "");
   const [status, setStatus] = useState("all");
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(requestedId);
   const [older, setOlder] = useState<RequestRecord[]>([]);
   const [cursor, setCursor] = useState<string | null | undefined>(undefined);
   const [paging, setPaging] = useState<Operation>({ kind: "idle" });
+  const [lookup, setLookup] = useState<Operation>({ kind: "idle" });
+  useEffect(() => {
+    if (!requestedId || records.some((record) => record.id === requestedId))
+      return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    setLookup({
+      kind: "pending",
+      label: "Finding selected request in retained history…",
+    });
+    const find = async () => {
+      try {
+        let before: string | null = null;
+        let examined = 0;
+        do {
+          const result: ReturnType<typeof requestsSchema.parse> = await json(
+            `/api/v1/requests?limit=1000${before ? `&before=${encodeURIComponent(before)}` : ""}`,
+            requestsSchema,
+            { signal: controller.signal },
+          );
+          if (controller.signal.aborted) return;
+          setCursor(result.nextCursor);
+          setOlder((previous) =>
+            mergeRequestRecords(result.items, previous, maxRecords),
+          );
+          if (result.items.some((record) => record.id === requestedId)) {
+            setLookup({ kind: "idle" });
+            return;
+          }
+          examined += result.items.length;
+          before = result.nextCursor;
+        } while (before && examined < maxRecords);
+        setLookup({
+          kind: "error",
+          label:
+            "The selected request is no longer retained. The gateway may have restarted or reached its history limit. Clear the search to inspect current requests.",
+        });
+      } catch (error) {
+        if (!controller.signal.aborted)
+          setLookup({
+            kind: "error",
+            label: `Could not find the selected request: ${message(error)}. Refresh this page to retry.`,
+          });
+        else
+          setLookup({
+            kind: "error",
+            label:
+              "Searching request history timed out. Refresh this page to retry.",
+          });
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
+    void find();
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [requestedId, maxRecords]);
   const pagingController = useRef<AbortController | null>(null);
   useEffect(() => () => pagingController.current?.abort(), []);
-  const combined = [
-    ...records,
-    ...older.filter((r) => !records.some((current) => current.id === r.id)),
-  ];
+  useEffect(() => {
+    setOlder((previous) => mergeRequestRecords(records, previous, maxRecords));
+  }, [records, maxRecords]);
+  const combined = mergeRequestRecords(records, older, maxRecords);
   const filtered = combined.filter(
     (r) =>
       (status === "all" || r.status === status) &&
@@ -282,10 +285,7 @@ function Activity({
         requestsSchema,
         { signal: controller.signal },
       );
-      setOlder((items) => [
-        ...items,
-        ...result.items.filter((r) => !items.some((i) => i.id === r.id)),
-      ]);
+      setOlder((items) => mergeRequestRecords(result.items, items, maxRecords));
       setCursor(result.nextCursor);
       setPaging({ kind: "idle" });
     } catch (error) {
@@ -298,9 +298,10 @@ function Activity({
     <section className="activity">
       <div className="section-title">
         <div>
-          <h2>{full ? "All request activity" : "Recent activity"}</h2>
+          <h2>{full ? "Request explorer" : "Recent activity"}</h2>
           <p className="caption">
-            One row per client request. Expand to inspect provider attempts.
+            One row per client request. Open details to follow every provider
+            attempt.
           </p>
         </div>
         <button className="quiet" onClick={refresh}>
@@ -326,7 +327,20 @@ function Activity({
               ))}
             </select>
           </label>
-          <span className="muted">{filtered.length} matching</span>
+          <span className="filter-count">
+            {filtered.length} matching / {combined.length} loaded
+          </span>
+          {(query || status !== "all") && (
+            <button
+              className="quiet"
+              onClick={() => {
+                setQuery("");
+                setStatus("all");
+              }}
+            >
+              Clear filters
+            </button>
+          )}
         </div>
       )}
       <div
@@ -357,7 +371,7 @@ function Activity({
                   <td>
                     <strong>{r.clientId}</strong>
                     <small className="mono" title={r.id}>
-                      {r.id.slice(0, 14)}
+                      {r.id.length > 12 ? `…${r.id.slice(-10)}` : r.id}
                     </small>
                   </td>
                   <td>
@@ -458,27 +472,46 @@ function Activity({
           </tbody>
         </table>
       </div>
-      {!shown.length && (
+      {lookup.kind !== "idle" && (
+        <p
+          className={
+            lookup.kind === "error"
+              ? "error-text lookup-notice"
+              : "caption lookup-notice"
+          }
+          role={lookup.kind === "error" ? "alert" : "status"}
+        >
+          {lookup.label}
+        </p>
+      )}
+      {!shown.length && lookup.kind !== "pending" && (
         <div className="empty">
           <strong>
-            {full && records.length
+            {full && combined.length
               ? "No requests match these filters"
               : "No requests yet"}
           </strong>
           <p>
-            {full && records.length
+            {full && combined.length
               ? "Try another client, provider, or outcome."
               : "Open the playground and send your first request."}
           </p>
         </div>
       )}
+      <div className="activity-footer">
+        <span className="caption">
+          {full
+            ? `${combined.length} loaded records. Filters apply to loaded records only.`
+            : "Latest 8 requests. Open Requests for search and earlier records."}
+        </span>
+      </div>
       {full && (cursor === undefined ? nextCursor : cursor) && (
         <button
           className="load-more"
           disabled={paging.kind === "pending"}
           onClick={() => void loadMore()}
         >
-          Load earlier requests
+          {paging.kind === "pending" ? paging.label : "Load earlier requests"}
         </button>
       )}
       {paging.kind === "error" && (
@@ -523,15 +556,20 @@ type Preset = (typeof presets)[number];
 function Routing({
   snapshot,
   refresh,
+  workspaceOperation,
+  setWorkspaceOperation,
 }: {
   snapshot: Snapshot;
   refresh: () => void;
+  workspaceOperation: WorkspaceOperation;
+  setWorkspaceOperation: (operation: WorkspaceOperation) => void;
 }) {
   const [operations, setOperations] = useState<Record<string, Operation>>({});
   const [applied, setApplied] = useState<Record<string, Fake>>({});
   const controllers = useRef(new Set<AbortController>());
   useEffect(() => () => controllers.current.forEach((c) => c.abort()), []);
   const control = async (id: string, preset: Preset) => {
+    setWorkspaceOperation("provider");
     const controller = new AbortController();
     controllers.current.add(controller);
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -576,6 +614,7 @@ function Routing({
     } finally {
       clearTimeout(timeout);
       controllers.current.delete(controller);
+      setWorkspaceOperation("idle");
     }
   };
   const ordered = [...snapshot.providers].sort(
@@ -586,7 +625,7 @@ function Routing({
     <section className="routing">
       <div className="section-title">
         <h2>Provider routing</h2>
-        <span className="muted">{snapshot.totals.active} active requests</span>
+        <span className="scope">Attempts / failures / cost · lifetime</span>
       </div>
       {ordered.length ? (
         ordered.map((p) => {
@@ -615,7 +654,7 @@ function Routing({
               </div>
               <dl className="provider-stats">
                 <div>
-                  <dt>Requests</dt>
+                  <dt>Attempts</dt>
                   <dd>{p.requests}</dd>
                 </div>
                 <div>
@@ -623,7 +662,7 @@ function Routing({
                   <dd>{p.failures}</dd>
                 </div>
                 <div>
-                  <dt>Active</dt>
+                  <dt>Active now</dt>
                   <dd>{p.active}</dd>
                 </div>
                 <div>
@@ -637,12 +676,18 @@ function Routing({
                   tests recovery.
                 </p>
               )}
+              {snapshot.demo.enabled && fake && (
+                <p className="control-label">Set provider behavior</p>
+              )}
               <div className="presets">
                 {presets.map((preset) => (
                   <button
                     key={preset.name}
                     disabled={
-                      !snapshot.demo.enabled || !fake || op?.kind === "pending"
+                      !snapshot.demo.enabled ||
+                      !fake ||
+                      workspaceOperation !== "idle" ||
+                      op?.kind === "pending"
                     }
                     onClick={() => void control(p.id, preset)}
                   >
@@ -683,9 +728,15 @@ function Routing({
 function Playground({
   snapshot,
   refresh,
+  inspectRequest,
+  workspaceOperation,
+  setWorkspaceOperation,
 }: {
   snapshot: Snapshot | undefined;
   refresh: () => void;
+  inspectRequest: (id: string) => void;
+  workspaceOperation: WorkspaceOperation;
+  setWorkspaceOperation: (operation: WorkspaceOperation) => void;
 }) {
   const [key, setKey] = useState("demo-key");
   const [model, setModel] = useState("general");
@@ -700,8 +751,9 @@ function Playground({
   const controller = useRef<AbortController | null>(null);
   const text = useRef("");
   useEffect(() => () => controller.current?.abort(), []);
-  const busy = output.kind === "streaming" || demo.kind === "pending";
+  const busy = workspaceOperation !== "idle";
   const send = async () => {
+    setWorkspaceOperation("request");
     const active = new AbortController();
     controller.current = active;
     text.current = "";
@@ -743,6 +795,7 @@ function Playground({
       clearTimeout(timeout);
       refresh();
       controller.current = null;
+      setWorkspaceOperation("idle");
     }
   };
   const primary = snapshot?.providers.find(
@@ -750,6 +803,7 @@ function Playground({
   );
   const runDemo = async (restore: boolean) => {
     if (!primary?.fake) return;
+    setWorkspaceOperation("demo");
     const active = new AbortController();
     controller.current = active;
     const timeout = setTimeout(() => active.abort(), 90000);
@@ -810,7 +864,7 @@ function Playground({
         setDemo({
           kind: "success",
           label:
-            "4 requests completed. Inspect activity below for the actual provider attempts. Primary remains set to HTTP 503 until restored.",
+            "4 requests completed. Open Requests for the actual provider attempts. Primary remains set to HTTP 503 until restored.",
         });
       }
     } catch (error) {
@@ -823,6 +877,7 @@ function Playground({
     } finally {
       clearTimeout(timeout);
       controller.current = null;
+      setWorkspaceOperation("idle");
       refresh();
     }
   };
@@ -915,15 +970,17 @@ function Playground({
               </button>
               <button
                 type="button"
-                disabled={!busy}
+                disabled={
+                  output.kind !== "streaming" && demo.kind !== "pending"
+                }
                 onClick={() => controller.current?.abort()}
               >
                 Stop request
               </button>
             </div>
             <p className="caption">
-              Local demo key only. Output display is limited to 32,000
-              characters.
+              Use a configured client key. Local demo uses demo-key. Output
+              display is limited to 32,000 characters.
             </p>
           </form>
           <div className="response">
@@ -946,7 +1003,10 @@ function Playground({
             <pre aria-live="polite" aria-busy={output.kind === "streaming"}>
               {output.kind === "idle"
                 ? "Your response will appear here."
-                : output.text || "Waiting for first chunk…"}
+                : output.text ||
+                  (output.kind === "streaming"
+                    ? "Waiting for first chunk…"
+                    : "No output received.")}
             </pre>
             {(output.kind === "error" || output.kind === "interrupted") && (
               <p role="alert" className="error-text">
@@ -960,7 +1020,14 @@ function Playground({
                 {output.result.usage.outputTokens} output tokens ·{" "}
                 {money(output.result.costMicros)}
                 <br />
-                <code>{output.result.requestId}</code>
+                <button
+                  type="button"
+                  className="request-link"
+                  onClick={() => inspectRequest(output.result.requestId)}
+                >
+                  Inspect request <code>{output.result.requestId}</code>
+                  <Icon name="arrow" />
+                </button>
               </p>
             )}
           </div>
@@ -1010,7 +1077,15 @@ function Playground({
           <ol className="demo-results">
             {results.map((r) => (
               <li key={r.requestId}>
-                <code>{r.requestId}</code>
+                <button
+                  type="button"
+                  className="request-link"
+                  onClick={() => inspectRequest(r.requestId)}
+                  aria-label={`Inspect request ${r.requestId}`}
+                >
+                  <code>{r.requestId}</code>
+                  <Icon name="arrow" />
+                </button>
                 <span>{r.provider}</span>
                 <Badge tone="good">completed</Badge>
               </li>
@@ -1025,54 +1100,94 @@ function Budgets({ snapshot }: { snapshot: Snapshot }) {
   return (
     <section className="budgets">
       <div className="section-title">
-        <h2>Client budgets</h2>
-        <span className="muted">Estimated USD · reservations included</span>
+        <div>
+          <h2>Client budgets</h2>
+          <p className="caption">
+            Estimated USD · lifetime spend plus active reservations
+          </p>
+        </div>
+        <div className="legend">
+          <span>
+            <i className="swatch route-swatch" />
+            Spent
+          </span>
+          <span>
+            <i className="swatch attempt-swatch" />
+            Reserved
+          </span>
+        </div>
       </div>
-      <div
-        className="table-scroll"
-        role="region"
-        aria-label="Client budgets, scroll horizontally for all columns"
-        tabIndex={0}
-      >
-        <table>
-          <thead>
-            <tr>
-              <th>Client</th>
-              <th>Spent</th>
-              <th>Reserved</th>
-              <th>Remaining</th>
-              <th>Budget</th>
-              <th>Rate policy</th>
-              <th>Rejected</th>
-            </tr>
-          </thead>
-          <tbody>
-            {snapshot.clients.map((c) => (
-              <tr key={c.id}>
-                <td>
-                  <strong>{c.id}</strong>
-                </td>
-                <td className="mono">{money(c.spentMicros)}</td>
-                <td className="mono">{money(c.reservedMicros)}</td>
-                <td className="mono">{money(c.remainingMicros)}</td>
-                <td className="mono">{money(c.budgetMicros)}</td>
-                <td>
-                  {c.rpm} / min · burst {c.burst}
-                </td>
-                <td>{c.rejected}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="budget-list">
+        {snapshot.clients.map((client) => {
+          const usage = budgetUsage(client);
+          return (
+            <div className="budget-row" key={client.id}>
+              <div className="budget-identity">
+                <strong>{client.id}</strong>
+                <span className="caption">
+                  {client.rpm} requests / min · burst {client.burst}
+                </span>
+              </div>
+              <div className="budget-visual">
+                <div className="budget-values">
+                  <span>
+                    {money(client.spentMicros)}{" "}
+                    <span className="muted">spent</span>
+                  </span>
+                  <span className="muted">of {money(client.budgetMicros)}</span>
+                </div>
+                <svg
+                  className="budget-meter"
+                  viewBox="0 0 400 8"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label={`${client.id} budget. ${money(client.spentMicros)} spent, ${money(client.reservedMicros)} reserved, ${money(client.remainingMicros)} remaining of ${money(client.budgetMicros)}. ${usage.zeroBudget ? "Zero budget configured." : `${(usage.spentPercent + usage.reservedPercent).toFixed(1)} percent committed.`}`}
+                >
+                  <rect className="bar-track" width="400" height="8" rx="4" />
+                  <rect
+                    className={
+                      usage.exhausted ? "outcome-rejected" : "route-bar"
+                    }
+                    width={usage.spentWidth * 4}
+                    height="8"
+                    rx="4"
+                  />
+                  <rect
+                    className="attempt-bar"
+                    x={usage.spentWidth * 4}
+                    width={usage.reservedWidth * 4}
+                    height="8"
+                  />
+                </svg>
+                <p className="caption">
+                  {money(client.reservedMicros)} reserved
+                  {usage.zeroBudget
+                    ? " · zero budget configured"
+                    : usage.exhausted
+                      ? " · budget committed"
+                      : ""}
+                </p>
+              </div>
+              <div className="budget-remaining">
+                <strong>{money(client.remainingMicros)}</strong>
+                <span className="caption">
+                  remaining · {client.rejected} rejected
+                </span>
+              </div>
+            </div>
+          );
+        })}
       </div>
       {!snapshot.clients.length && (
         <p className="empty">No clients configured.</p>
       )}
       <div className="cache-summary">
         <strong>Exact cache</strong>
-        <span>{snapshot.cache.entries} entries</span>
         <span>
-          {snapshot.cache.hits} hits / {snapshot.cache.misses} misses
+          {snapshot.cache.entries} / {snapshot.cache.maxEntries} entries
+        </span>
+        <span>
+          {snapshot.cache.hits} hits / {snapshot.cache.misses} misses · lifetime
         </span>
         <span>{Math.round(snapshot.cache.ttlMs / 1000)} s TTL</span>
         <span>
@@ -1084,48 +1199,110 @@ function Budgets({ snapshot }: { snapshot: Snapshot }) {
     </section>
   );
 }
+const pages = {
+  overview: {
+    title: "Gateway overview",
+    description: "A clear view of request health, routing, and spend.",
+    task: "Monitor",
+  },
+  requests: {
+    title: "Requests",
+    description: "Find a request. Follow its route. Understand the outcome.",
+    task: "Investigate",
+  },
+  playground: {
+    title: "Playground",
+    description: "Send real requests and test how the gateway recovers.",
+    task: "Operate",
+  },
+} satisfies Record<Page, { title: string; description: string; task: string }>;
 function App() {
   const { feed, refresh } = useFeed();
+  const [workspaceOperation, setWorkspaceOperation] =
+    useState<WorkspaceOperation>("idle");
   const [page, setPage] = useState<Page>(pageFromPath);
+  const [selectedRequest, setSelectedRequest] = useState(() =>
+    new URLSearchParams(location.search).get("request"),
+  );
   useEffect(() => {
-    const handler = () => setPage(pageFromPath());
+    const handler = () => {
+      setPage(pageFromPath());
+      setSelectedRequest(new URLSearchParams(location.search).get("request"));
+    };
     window.addEventListener("popstate", handler);
     return () => window.removeEventListener("popstate", handler);
   }, []);
   const navigate = (next: Page) => {
     history.pushState(null, "", next === "overview" ? "/" : `/${next}`);
     setPage(next);
+    setSelectedRequest(null);
+    window.scrollTo({ top: 0 });
+  };
+  const inspectRequest = (id: string) => {
+    history.pushState(null, "", `/requests?request=${encodeURIComponent(id)}`);
+    setPage("requests");
+    setSelectedRequest(id);
+    refresh();
     window.scrollTo({ top: 0 });
   };
   const data = "data" in feed ? feed.data : undefined;
   const snapshot = data?.snapshot;
+  const telemetry = deriveTelemetry(data?.requests ?? []);
+  const link = (
+    next: Page,
+    children: React.ReactNode,
+    className = "text-link",
+  ) => (
+    <a
+      href={next === "overview" ? "/" : `/${next}`}
+      className={className}
+      onClick={(event) => {
+        if (
+          event.button === 0 &&
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey
+        ) {
+          event.preventDefault();
+          navigate(next);
+        }
+      }}
+    >
+      {children}
+    </a>
+  );
   return (
     <div className="app">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <aside className="sidebar">
-        <a
-          className="brand"
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("overview");
-          }}
-        >
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 28 28"
-            fill="none"
-            aria-hidden="true"
-          >
-            <path
-              d="M5 23V8l9-4 9 4v15M10 23V11h8v12M3 23h22"
-              stroke="currentColor"
-              strokeWidth="1.7"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <span>Portunus</span>
-        </a>
+        {link(
+          "overview",
+          <>
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 28 28"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M5 23V8l9-4 9 4v15M10 23V11h8v12M3 23h22"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <span>Portunus</span>
+          </>,
+          "brand",
+        )}
+        <div className="workspace-label">
+          <span className="workspace-dot" />
+          Gateway console
+        </div>
         <nav aria-label="Main navigation">
           {(["overview", "requests", "playground"] satisfies Page[]).map(
             (item) => (
@@ -1133,18 +1310,42 @@ function App() {
                 href={item === "overview" ? "/" : `/${item}`}
                 key={item}
                 aria-current={page === item ? "page" : undefined}
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate(item);
+                onClick={(event) => {
+                  if (
+                    event.button === 0 &&
+                    !event.metaKey &&
+                    !event.ctrlKey &&
+                    !event.shiftKey &&
+                    !event.altKey
+                  ) {
+                    event.preventDefault();
+                    navigate(item);
+                  }
                 }}
               >
                 <Icon name={item} />
-                {item[0]?.toUpperCase()}
-                {item.slice(1)}
+                <span>
+                  {item[0]?.toUpperCase()}
+                  {item.slice(1)}
+                  <small>{pages[item].task}</small>
+                </span>
+                {page === item && <span className="nav-marker" />}
               </a>
             ),
           )}
         </nav>
+        <div className="sidebar-note">
+          <p>
+            One request.
+            <br />
+            Every attempt.
+          </p>
+          <span>
+            Observe the gateway.
+            <br />
+            Understand the decisions.
+          </span>
+        </div>
         <div className="sidebar-footer">
           <span
             className={`status-dot ${feed.kind === "live" ? "connected" : ""}`}
@@ -1153,7 +1354,7 @@ function App() {
             {snapshot?.demo.enabled ? "Local demo" : "Gateway console"}
             <small>
               {feed.kind === "live"
-                ? "Connected"
+                ? "Connected · polls every 2 s"
                 : feed.kind === "loading"
                   ? "Connecting…"
                   : "Connection unavailable"}
@@ -1161,37 +1362,43 @@ function App() {
           </span>
         </div>
       </aside>
-      <main>
+      <main id="main-content">
+        <div className="topbar">
+          <span>
+            Workspace <span className="breadcrumb-divider">/</span>{" "}
+            {pages[page].task}
+          </span>
+          <span>
+            {snapshot?.demo.enabled
+              ? "Local demo · synthetic providers"
+              : "Gateway telemetry"}
+          </span>
+        </div>
         <header className="page-header">
           <div>
-            <h1>
-              {page === "overview"
-                ? "Gateway overview"
-                : page === "requests"
-                  ? "Requests"
-                  : "Playground"}
-            </h1>
-            <p className="muted">
-              {page === "overview"
-                ? "Routing, reliability, and the requests behind them."
-                : page === "requests"
-                  ? "Follow each request from admission to final outcome."
-                  : "Test streaming, caching, and failure recovery."}
-            </p>
+            <h1>{pages[page].title}</h1>
+            <p className="muted">{pages[page].description}</p>
           </div>
           <div className="live-controls">
-            <Badge tone={feed.kind === "live" ? "good" : "warn"}>
-              {feed.kind === "live"
-                ? "Live"
-                : feed.kind === "loading"
-                  ? "Connecting"
-                  : "Offline"}
-            </Badge>
-            <span className="caption">
-              {snapshot
-                ? `Updated ${clock(snapshot.capturedAt)}`
-                : "Awaiting snapshot"}
-            </span>
+            <div>
+              <Badge tone={feed.kind === "live" ? "good" : "warn"}>
+                <span
+                  className={`status-dot ${feed.kind === "live" ? "connected" : ""}`}
+                />
+                {feed.kind === "live"
+                  ? "Live"
+                  : feed.kind === "loading"
+                    ? "Connecting"
+                    : feed.kind === "stale"
+                      ? "Stale"
+                      : "Offline"}
+              </Badge>
+              <span className="caption">
+                {snapshot
+                  ? `Updated ${clock(snapshot.capturedAt)}`
+                  : "Awaiting snapshot"}
+              </span>
+            </div>
             <button
               className="icon-button"
               aria-label="Refresh gateway data"
@@ -1203,106 +1410,197 @@ function App() {
         </header>
         {(feed.kind === "error" || feed.kind === "stale") && (
           <div className="connection-error" role="alert">
-            <strong>
-              {feed.kind === "stale"
-                ? "Showing last known data"
-                : "Gateway data unavailable"}
-            </strong>
-            <span>{feed.error}</span>
+            <div>
+              <strong>
+                {feed.kind === "stale"
+                  ? "Showing last known data"
+                  : "Gateway data unavailable"}
+              </strong>
+              <p>{feed.error}</p>
+              <p className="caption">
+                Automatic retries continue every 2 seconds while this tab is
+                visible.
+              </p>
+            </div>
             <button onClick={refresh}>Retry connection</button>
           </div>
         )}
-        {page === "overview" && (
+        {feed.kind === "loading" && page !== "playground" && (
+          <div className="loading" role="status">
+            <span className="status-dot" />
+            Reading gateway state…
+            <p className="caption">
+              Connecting to request records and the latest snapshot.
+            </p>
+          </div>
+        )}
+        {page === "overview" && snapshot && data && (
           <>
-            {snapshot ? (
-              <>
-                <section className="metrics" aria-label="Gateway metrics">
-                  <div>
-                    <span>Client requests</span>
-                    <strong>{snapshot.totals.requests.toLocaleString()}</strong>
-                    <small>
-                      {snapshot.totals.active} active ·{" "}
-                      {snapshot.totals.rejected} rejected
-                    </small>
-                  </div>
-                  <div>
-                    <span>Success rate</span>
-                    <strong>
-                      {snapshot.totals.requests
-                        ? `${((snapshot.totals.succeeded / snapshot.totals.requests) * 100).toFixed(1)}%`
-                        : "—"}
-                    </strong>
-                    <small>
-                      {snapshot.totals.succeeded} completed /{" "}
-                      {snapshot.totals.requests} received
-                    </small>
-                  </div>
-                  <div>
-                    <span>p95 duration</span>
-                    <strong>{ms(snapshot.latency.p95Ms)}</strong>
-                    <small>{snapshot.latency.count} retained samples</small>
-                  </div>
-                  <div>
-                    <span>Estimated cost</span>
-                    <strong>
-                      {snapshot.totals.requests
-                        ? money(snapshot.totals.costMicros)
-                        : "—"}
-                    </strong>
-                    <small>
-                      {snapshot.totals.providerAttempts} attempts ·{" "}
-                      {snapshot.totals.fallbacks} fallbacks
-                    </small>
-                  </div>
-                </section>
-                <div className="overview-grid">
-                  <Routing snapshot={snapshot} refresh={refresh} />
-                  <Latency records={data?.requests ?? []} />
-                </div>
-              </>
-            ) : feed.kind === "loading" ? (
-              <div className="loading" role="status">
-                <span className="status-dot" /> Reading gateway state…
+            <div className="overview-summary">
+              <h2>At a glance</h2>
+              <span className="scope">
+                Lifetime totals · since process start
+              </span>
+            </div>
+            <section
+              className="metrics"
+              aria-label="Gateway metrics and measurement scopes"
+            >
+              <div>
+                <span>Client requests</span>
+                <strong>{snapshot.totals.requests.toLocaleString()}</strong>
+                <small>
+                  {snapshot.totals.active} active · {snapshot.totals.rejected}{" "}
+                  rejected
+                </small>
               </div>
-            ) : null}
+              <div>
+                <span>Successful / received</span>
+                <strong>
+                  {snapshot.totals.requests
+                    ? `${((snapshot.totals.succeeded / snapshot.totals.requests) * 100).toFixed(1)}%`
+                    : "No requests"}
+                </strong>
+                <small>
+                  {snapshot.totals.succeeded} successful /{" "}
+                  {snapshot.totals.requests} received · lifetime
+                </small>
+              </div>
+              <div>
+                <span>
+                  p95 duration <span className="scope-inline">Retained</span>
+                </span>
+                <strong>{ms(snapshot.latency.p95Ms)}</strong>
+                <small>
+                  {snapshot.latency.count} retained latency samples · p50{" "}
+                  {ms(snapshot.latency.p50Ms)}
+                </small>
+              </div>
+              <div>
+                <span>Estimated spend</span>
+                <strong>{money(snapshot.totals.costMicros)}</strong>
+                <small>
+                  {snapshot.totals.providerAttempts} attempts ·{" "}
+                  {snapshot.totals.fallbacks} fallbacks · lifetime
+                </small>
+              </div>
+            </section>
+            <div className="guidance">
+              <div>
+                <strong>
+                  {data.requests.length
+                    ? "Put the gateway to the test"
+                    : "Your gateway is ready for its first request"}
+                </strong>
+                <p className="caption">
+                  {data.requests.length
+                    ? "Send a prompt or simulate a provider failure. Follow the resulting attempts in Requests."
+                    : "Send a prompt in Playground. These charts will fill with real request observations."}
+                </p>
+              </div>
+              {link(
+                "playground",
+                <>
+                  Open playground <Icon name="arrow" />
+                </>,
+                "button-link primary",
+              )}
+            </div>
+            <div className="chart-grid primary-charts">
+              <Timeline telemetry={telemetry} />
+              <OutcomeChart
+                telemetry={telemetry}
+                total={data.requests.length}
+              />
+            </div>
+            <div className="chart-grid secondary-charts">
+              <ProviderVolumes snapshot={snapshot} telemetry={telemetry} />
+              <Histogram telemetry={telemetry} />
+            </div>
+            <Budgets snapshot={snapshot} />
+            <div className="activity-link">
+              {link(
+                "requests",
+                <>
+                  Explore all requests <Icon name="arrow" />
+                </>,
+              )}
+            </div>
+            <Activity
+              key={`overview-${data.epoch}`}
+              records={data.requests}
+              full={false}
+              nextCursor={data.nextCursor}
+              maxRecords={data.snapshot.retention.maxRequests}
+              refresh={refresh}
+            />
           </>
         )}
-        {page === "playground" && (
-          <Playground snapshot={snapshot} refresh={refresh} />
-        )}
-        {page !== "playground" && feed.kind !== "loading" && (
-          <Activity
-            records={data?.requests ?? []}
-            full={page === "requests"}
-            nextCursor={data?.nextCursor ?? null}
-            refresh={refresh}
-          />
-        )}
-        {page === "overview" && snapshot && (
+        {page === "requests" && data && (
           <>
-            <div className="workspace-divider">
-              <h2>Operate the gateway</h2>
+            <div className="request-context">
+              <p>
+                <strong>
+                  {snapshot?.retention.maxRequests.toLocaleString()}
+                </strong>{" "}
+                request records retained at most. Search the latest 100, then
+                load earlier records.
+              </p>
+              <span className="caption">
+                Details include timing, usage provenance, cost, and provider
+                attempts.
+              </span>
+            </div>
+            <Activity
+              key={`requests-${data.epoch}-${selectedRequest ?? "all"}`}
+              records={data.requests}
+              full
+              nextCursor={data.nextCursor}
+              maxRecords={data.snapshot.retention.maxRequests}
+              refresh={refresh}
+            />
+          </>
+        )}
+        <div hidden={page !== "playground"}>
+          <Playground
+            snapshot={snapshot}
+            refresh={refresh}
+            inspectRequest={inspectRequest}
+            workspaceOperation={workspaceOperation}
+            setWorkspaceOperation={setWorkspaceOperation}
+          />
+          {snapshot && (
+            <Routing
+              snapshot={snapshot}
+              refresh={refresh}
+              workspaceOperation={workspaceOperation}
+              setWorkspaceOperation={setWorkspaceOperation}
+            />
+          )}
+          <div className="investigate-link">
+            <div>
+              <h2>Follow the result</h2>
               <p className="caption">
-                Generate real evidence, then inspect the route above.
+                Inspect request outcomes, provider attempts, and reported or
+                estimated usage.
               </p>
             </div>
-            <Playground snapshot={snapshot} refresh={refresh} />
-            <Budgets snapshot={snapshot} />
-          </>
-        )}
-        {page === "playground" && data && (
-          <Activity
-            records={data.requests}
-            full={false}
-            nextCursor={data.nextCursor}
-            refresh={refresh}
-          />
-        )}
+            {link(
+              "requests",
+              <>
+                Open requests <Icon name="arrow" />
+              </>,
+              "button-link",
+            )}
+          </div>
+        </div>
         <footer className="main-footer">
-          <span>Portunus / operator console</span>
+          <span>
+            Portunus <span className="footer-divider">/</span> operator console
+          </span>
           <span>
             {snapshot
-              ? `Process uptime ${Math.floor(snapshot.uptimeMs / 60000)} min · sequence ${snapshot.sequence}`
+              ? `Uptime ${Math.floor(snapshot.uptimeMs / 60000)} min · sequence ${snapshot.sequence} · retention up to ${snapshot.retention.maxRequests.toLocaleString()} requests`
               : "Waiting for gateway"}{" "}
             · costs are estimated
           </span>

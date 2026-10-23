@@ -1,116 +1,123 @@
 ---
 name: Portunus
-description: Graphite surfaces, compact evidence, and restrained mint actions.
+description: Black canvas, charcoal panels, and scoped gateway evidence.
 colors:
-  mint: "#a4e2c6"
-  mint-hover: "#beeeda"
-  action-ink: "#10281d"
-  canvas: "#0c0f13"
-  workspace: "#10141a"
-  text: "#e5e9ef"
-  muted: "#9da7b4"
-  line: "#2a3039"
-  control: "#1a2028"
-  control-hover: "#272f39"
-  control-border: "#39424e"
-  control-border-hover: "#657282"
-  quiet-text: "#bac3ce"
-  field: "#0d1218"
-  field-text: "#edf1f5"
-  field-label: "#c8d1dc"
-  placeholder: "#96a3b3"
-  nav-text: "#aab4c1"
-  nav-hover: "#171c23"
-  nav-hover-text: "#f3f6f9"
-  nav-current: "#192922"
-  badge: "#252c35"
-  badge-text: "#c7d0db"
-  good: "#b0e7ca"
-  good-bg: "#1d332a"
-  warn: "#f1c589"
-  warn-bg: "#372b1b"
-  bad: "#ffb4b2"
-  bad-bg: "#3b2329"
-  response: "#0c1117"
-  response-border: "#303946"
-  response-text: "#c9d5de"
-  table-heading: "#131920"
-  table-heading-text: "#9da9b7"
-  table-line: "#242c35"
-  row-hover: "#141b23"
-  detail: "#151c24"
-  chart-bar: "#90cbb0"
-  chart-label: "#aab5c3"
-  notice: "#e4c48f"
-  connection-bg: "#241f17"
-  connection-border: "#67553a"
-  connection-text: "#efd1a1"
+  canvas: "#000"
+  panel: "#101010"
+  field: "#090909"
+  muted: "#a3a3a3"
+  line: "#292929"
+  mint: "#a4e6c5"
+  amber: "#ebc088"
+  red: "#f5a6a6"
+  text: "#f2f2f2"
+  sidebar: "#080808"
+  shell-line: "#232323"
+  control: "#1b1b1b"
+  control-border: "#3b3b3b"
+  control-border-hover: "#707070"
+  control-active: "#363636"
+  mint-hover: "#c2f4da"
+  action-ink: "#0b271a"
+  quiet-text: "#c1c1c1"
+  field-border: "#414141"
+  field-border-hover: "#727272"
+  field-label: "#cfcfcf"
+  placeholder: "#999"
+  nav-text: "#b0b0b0"
+  nav-hover: "#171717"
+  nav-current: "#1a211d"
+  nav-current-caption: "#b5c9be"
+  badge: "#282828"
+  badge-text: "#d1d1d1"
+  good: "#b0e8ca"
+  good-bg: "#1b3026"
+  warn: "#f0cb98"
+  warn-bg: "#34291d"
+  bad: "#ffc1c1"
+  bad-bg: "#382121"
+  chart-label: "#a8a8a8"
+  chart-grid: "#303030"
+  chart-track: "#252525"
+  chart-canceled: "#aaa"
+  chart-attempt: "#7f8b84"
+  detail: "#191919"
+  error-text: "#ffb6b6"
+  connection-bg: "#241c13"
+  connection-border: "#63503b"
+  connection-text: "#efcfaa"
 typography:
   headline:
-    fontSize: "25px"
+    fontSize: "30px"
     fontWeight: 600
     lineHeight: 1.25
-    letterSpacing: "-0.03em"
+    letterSpacing: "-0.035em"
   title:
-    fontSize: "14px"
+    fontSize: "16px"
     fontWeight: 600
-    lineHeight: 1.5
-    letterSpacing: "-0.01em"
+    lineHeight: 1.4
+    letterSpacing: "-0.015em"
+  subheading:
+    fontSize: "15px"
+    fontWeight: 600
   body:
     fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
     fontSize: "13px"
-    fontWeight: 400
-    lineHeight: 1.5
+    lineHeight: 1.55
   caption:
     fontSize: "12px"
-    lineHeight: 1.5
+    lineHeight: 1.65
   label:
     fontSize: "11px"
-    lineHeight: 1.5
-  table-heading:
-    fontSize: "10px"
     fontWeight: 500
-    letterSpacing: "0.05em"
   measurement:
-    fontFamily: '"SFMono-Regular", Consolas, monospace'
-    fontSize: "24px"
+    fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace'
+    fontSize: "26px"
     fontWeight: 500
-    letterSpacing: "-0.04em"
+    lineHeight: 1.4
+    letterSpacing: "-0.035em"
+  response:
+    fontFamily: '"SFMono-Regular", Consolas, monospace'
+    fontSize: "12px"
+    lineHeight: 1.85
 rounded:
-  badge: "4px"
-  field: "5px"
-  control: "6px"
-  response: "7px"
+  scope: "4px"
+  badge: "5px"
+  field: "7px"
+  control: "8px"
+  alert: "12px"
+  panel: "14px"
 spacing:
   compact: "8px"
-  field-gap: "14px"
-  group: "16px"
-  section: "22px"
-  workspace-gap: "30px"
-  overview-gap: "32px"
+  small: "12px"
+  paired: "16px"
+  group: "20px"
+  section: "24px"
+  workspace: "26px"
+  columns: "32px"
 components:
-  button-primary:
-    backgroundColor: "{colors.mint}"
-    textColor: "{colors.action-ink}"
-    rounded: "{rounded.control}"
-    padding: "8px 12px"
-  button-primary-hover:
-    backgroundColor: "{colors.mint-hover}"
   button-secondary:
     backgroundColor: "{colors.control}"
     textColor: "{colors.text}"
     rounded: "{rounded.control}"
-    padding: "8px 12px"
+    padding: "9px 14px"
+  button-primary:
+    backgroundColor: "{colors.mint}"
+    textColor: "{colors.action-ink}"
+    rounded: "{rounded.control}"
+    padding: "9px 14px"
+  button-primary-hover:
+    backgroundColor: "{colors.mint-hover}"
   button-quiet:
     backgroundColor: "transparent"
     textColor: "{colors.quiet-text}"
     rounded: "{rounded.control}"
-    padding: "8px 12px"
+    padding: "9px 14px"
   field:
     backgroundColor: "{colors.field}"
-    textColor: "{colors.field-text}"
+    textColor: "{colors.text}"
     rounded: "{rounded.field}"
-    padding: "10px 11px"
+    padding: "10px 12px"
   nav-current:
     backgroundColor: "{colors.nav-current}"
     textColor: "{colors.mint}"
@@ -120,119 +127,108 @@ components:
     backgroundColor: "{colors.badge}"
     textColor: "{colors.badge-text}"
     rounded: "{rounded.badge}"
-    padding: "3px 7px"
-  response:
-    backgroundColor: "{colors.response}"
-    textColor: "{colors.response-text}"
-    rounded: "{rounded.response}"
-    padding: "18px"
+    padding: "3px 8px"
+  chart-panel:
+    backgroundColor: "{colors.panel}"
+    rounded: "{rounded.panel}"
+    padding: "22px 22px 16px"
 ---
 
 # Design System: Portunus
 
 ## Overview
 
-**Creative North Star: "Engineering field notes"**
+**Creative North Star: "Gateway evidence"**
 
-Engineering field notes: compact system type, aligned measurements, graphite surfaces, and quiet separators. Mint identifies the main action and current navigation; amber and red carry meaningful state. The interface stays flat and restrained, without gradients, glow, marketing treatments, or decorative imagery.
+Portunus uses a black canvas, charcoal panels, bright text, and mint actions. Measurements, chart labels, and explanatory copy help the operator connect a client request to its provider attempts.
+
+This document records source behavior in `web/src/style.css`, `web/src/main.tsx`, and `web/src/visualizations.tsx`. `web/src/telemetry.ts` establishes chart aggregation. `PRODUCT.md` supplies product constraints; `docs/dashboard-brief.md` owns page strategy. This extraction makes no browser, contrast, or finish-review claim.
 
 **Key Characteristics:**
 
-- Compact headings and tabular measurements.
-- Flat sections divided by hairlines.
-- Explicit status text alongside color.
-- Responsive stacking with locally scrollable tables.
-
-This is a record of the shipped implementation, extracted from `web/src/style.css`, `web/src/main.tsx`, and `web/src/api.ts`. Direction comes from `PRODUCT.md`, `docs/dashboard-brief.md`, and `.impeccable/surfaces/web-src-main-tsx.md`. The supplied finish review reports SHIP after independent desktop/mobile and source inspection; it reports checked text contrast pairs above 4.5:1. This document does not extend that claim to disabled controls, separators, or every possible pairing.
-
-Visual evidence inspected: `.impeccable/review/desktop.png` (1440 × 2588) and `mobile.png` (390 × 3363). These are captured app pixels, not generated illustrations. The app itself uses inline SVG marks, icons, and a data histogram; it contains no illustration or raster asset system. There was no approved image composition; code and rendered output establish the implementation.
+- Separate pages for monitoring, request investigation, and experiments.
+- Visible scopes beside measurements and charts.
+- Rounded charcoal panels on a black workspace.
+- Status words alongside semantic color.
 
 ## Colors
 
-The frontmatter records source values; the role descriptions below explain their use.
+Frontmatter preserves the source's CSS color values. The first eight colors correspond to the root custom properties.
 
-### Primary
+Mint identifies the primary action, brand, current navigation, focus outline, caret, successful chart observations, and final routes. Amber identifies rejected chart observations and budget commitment; red identifies chart errors. Canceled chart observations use gray, while canceled table rows use the bad badge. Attempts and reserved budget share the muted chart-attempt color.
 
-Mint fills the Send request button, marks the current navigation item, supplies the keyboard focus outline and text caret, and colors the brand mark. The lighter mint is the primary hover state; action ink is its dark text. The histogram uses its own muted green bar color.
+Black fills the workspace. Sidebar and panel tones separate navigation and content; field is the inset form background. Line separates content and outlines panels. Good, warn, and bad are distinct badge foreground/background pairs. Connection failures use a separate amber alert treatment.
 
-### Neutral
-
-Canvas frames the fixed rail; workspace fills the main reading area. Text and muted divide primary evidence from annotations. Line separates sections without enclosing each in a card. Control and field surfaces distinguish interactive elements; response and expanded-detail surfaces group output and attempt evidence.
-
-### Semantic states
-
-Good, warn, and bad are foreground/background pairs for labeled badges. Closed circuits, successful outcomes, cache hits, and live connection use good; open/half-open circuits, rejected requests, and offline/connecting status use warn. Request errors and canceled requests use bad. Streaming interruption uses warn in the response badge and bad-colored explanatory text. Recovery notices use notice; the connection alert has its own amber surface, border, and text.
+**The State Label Rule.** Preserve labels, legends, and counts wherever color communicates an outcome.
 
 ## Typography
 
-The body stack names Inter first, then platform UI fonts; no font file or external font import is shipped. Monospace is reserved for identifiers, output, definition-list values, chart labels, and major measurements, with tabular numerals.
+Body and headings inherit the Inter-first platform UI stack. The stylesheet defines no font import or font face. Measurements, identifiers, code, and budget values use monospace and tabular numerals. Chart labels use the inherited UI font with tabular numerals.
 
-The page headline uses the headline token, reducing to (24px) on mobile. Section and provider headings are compact (14px); mobile provider headings reduce to (13px). The workspace divider heading is (19px, weight 600, letter spacing -0.025em). Captions and field labels use (12px); badges, small annotations, and definition labels use (11px). Table headings use the uppercase table-heading token. Metric values reduce to (21px) at the middle breakpoint. Paragraphs cap at (75ch). Response text uses (12px) monospace with line height (1.8); textareas use line height (1.65).
+Headline, section title, and measurement roles use the frontmatter scale. Provider/response headings use subheading. Small scopes, legends, table headings, and metadata use 10px or 11px text. Table headings retain their written case. Paragraphs cap at 75ch. Textareas use line height 1.7; response output uses the response role.
+
+At widths up to 1250px, measurements become 23px. Up to 760px, headlines become 27px, section titles 15px, and measurements 24px. Up to 380px, measurements become 21px. Mobile chart SVG text sizes are 20px for the timeline, 17px for the histogram, 13px for outcomes, and 19px for provider volume. These sizes scale with each SVG viewBox.
 
 ## Layout
 
-The desktop rail is fixed (190px), with matching main-content left margin. Main has a maximum width of (1660px), padding (38px 38px 20px), and a full viewport minimum height. The four-column metrics strip uses top/bottom rules and vertical separators. Routing and duration evidence use columns (1.15fr / 1fr) with a (32px) gap; the duration section has a left divider and (28px) inset. Form and response use equal columns with a (30px) gap. Paired form fields remain two columns.
+The desktop sidebar is fixed at 224px with matching main margin. Main has maximum width 1920px and padding 0 40px 26px. A 65px topbar precedes the page header. Four metric columns sit between horizontal rules with internal vertical dividers. Primary chart columns use 1.8fr and a minimum-280px 1fr column; secondary charts use 1.15fr / 1fr. Both have 20px gaps. Playground form and response use equal columns with a 32px gap and a response-side divider. Provider controls use two columns. Budget rows use identity / meter / remaining columns with a 26px gap.
 
-At viewport widths of at least (1500px), main horizontal padding becomes (48px) and the overview gap becomes (42px). At widths up to (1150px), main padding is (28px 24px), routing/duration stack, and the duration divider moves above it. At widths up to (760px), the rail becomes a static top strip, navigation runs horizontally, and main padding becomes (25px 20px 20px). The header stacks, metrics become two columns, and form/response stack with a (22px) gap. Navigation remains visible without a collapsed menu.
+Responsive rules apply in source order:
 
-Tables preserve their columns and nowrap cells inside labeled, keyboard-focusable horizontal scroll regions. Detail rows wrap their contents. Response output wraps long strings and scrolls vertically, with a maximum height of (360px). Its minimum text height changes from (190px) to (140px) on mobile; the mobile response container has a minimum height of (260px). Provider measurements retain four columns and permit value wrapping. Actions and filters wrap; no global fixed-height dashboard or page-level horizontal scroller is introduced.
+- At least 1800px, main side padding becomes 56px.
+- Up to 1250px, sidebar/main offset becomes 194px and main side padding 28px. Primary charts use 1.5fr and a minimum-260px 1fr column. Chart titles/scopes stack; Playground gap and response inset become 22px.
+- Up to 1000px, sidebar/main offset becomes 174px and main side padding 24px. Metrics become two columns. Primary charts, Playground, and providers stack; secondary charts stay paired. The response divider moves above the output. Budgets place their meter beneath identity and remaining balance.
+- Up to 760px, the sidebar becomes a sticky full-width header with three equal navigation links. Secondary charts stack. Main loses its left margin and uses 20px side padding. Guidance and investigation links stack. Header status stays beside the title; its timestamp hides. Chart titles/scopes return to a row.
+- Up to 380px, main/header side padding becomes 14px and paired form fields stack. The inline retained badge hides; the metric's explanatory text remains.
+
+Wide tables scroll inside a labeled, focusable region. Detail contents and long output wrap. Response text scrolls vertically above 560px; its minimum height is 260px, then 180px up to 1000px and 190px up to 760px. Filters/actions wrap. The dashboard uses document scrolling.
 
 ## Elevation & Depth
 
-No box shadows, gradients, or glows are defined. Depth comes from neighboring dark tones, thin borders, and the inset response and expanded request-detail surfaces. Most sections have separators rather than a card shell.
+Depth comes from dark fills, thin borders, and inset detail rows. There are no ambient shadows or gradients. The mobile current navigation item has an inset mint underline, recorded in the sidecar.
 
-Motion is limited to background/border transitions (150ms ease) for buttons and links and a one-time connected-dot color animation (600ms). Both exist only when reduced motion is not requested. The sidecar records the exact values.
+With reduced motion not requested, controls transition background/border colors over 160ms ease-out. Disclosure rotation uses 160ms cubic-bezier(.16, 1, .3, 1). The connected dot changes color once over 600ms with the same curve. Reduced-motion mode omits these declarations.
 
 ## Shapes
 
-Controls have gently rounded corners; fields, badges, and the response container use their own frontmatter radii. Section separators and table rules are (1px). Status dots are circles (7px). Histogram bars use a small SVG corner radius (2px). Mobile navigation rounds only the top corners (5px). Inline icons use a (17px) frame and (1.6px) rounded strokes; the brand mark is a separate (28px) outline, narrowed to (24px) on mobile.
+Panels use the panel radius; alerts, controls, fields, and badges use their frontmatter radii. Borders and separators are 1px. Status dots are 6px circles. Chart swatches are 7px squares with 2px corners. SVG bars use 2px to 4px corners. Navigation uses 7px top corners on mobile. Inline icons use 17px frames with rounded 1.6px strokes; navigation icons are 18px and the brand mark is 30px, narrowing to 25px at the middle breakpoint.
 
 ## Components
 
-### Buttons
+Buttons have a 42px minimum height. Secondary hover changes fill and border; active darkens the fill. Primary has mint fill, dark ink, and a lighter hover. Quiet starts transparent. Disabled buttons use opacity .42 and a not-allowed cursor. Presets are 40px tall; icon controls are 40px, reducing to 36px on mobile; table disclosures are 36px. Inline Inspect request buttons use mint text, transparent fill, no border, a 36px minimum height, and wrapping IDs.
 
-The default secondary button has a thin control border, minimum height (40px), medium weight (500), and an (8px) content gap. Hover changes its background and border. Primary uses mint and dark action ink; quiet uses a transparent background/border and muted light text, then inherits the default hover treatment. Icon buttons and table disclosure buttons have a minimum width of (40px). Provider presets use smaller labels (11px) and padding (6px 9px), retaining the (40px) minimum height. Disabled buttons use opacity (0.45) and a not-allowed cursor; their hover treatment is suppressed.
+Fields have visible labels, a 7px label gap, 44px minimum height, and a border that brightens on hover. Disabled fields use opacity .6. Textareas resize vertically. The client key is masked; the 16px native checkbox uses mint. Focusable controls and scroll regions share a 2px mint outline with 4px offset. A focus-revealed skip link targets main content. Required fields use native validation; no custom invalid-border treatment exists.
 
-### Inputs / Fields
+Navigation links show page names and desktop task subtitles. The current link has mint text, a green-black fill, and a marker. On mobile, subtitles/marker hide and the inset underline marks the current page. Badges are informational labels with no custom interaction states.
 
-Visible labels sit above full-width native controls with a (7px) gap. Inputs/selects/textareas have minimum height (42px) and a thin control border. Placeholders have a distinct muted color. Textarea resizing is vertical. Disabled fields use opacity (0.6). The checkbox is native (16px), with mint accent. The client-key input masks its value. While a request or demo is pending, conflicting fields and actions are disabled; Stop remains available for the active operation.
+Page composition follows the existing brief:
 
-All buttons, links, fields, selects, textareas, and focusable scroll regions share a visible mint outline (2px, offset 3px). No extra field hover or custom invalid-border style is defined; required fields retain native validation.
+- Overview `/` shows scoped metrics, Playground guidance, latency/outcome charts, provider/distribution charts, client budgets/cache, and the latest eight requests. It has no request filters or fault-control form.
+- Requests `/requests` shows the request explorer with search, outcome filters, clear filters, paging, and expandable provider attempts. Search applies only to loaded records, initially the latest 100. Details expose full IDs, reported/estimated usage, timing, estimated cost, and explicit explanations for cache hits or pre-routing endings.
+- Playground `/playground` contains the request form/response, failover demo, provider routing and presets, then a link to investigate results. Completed responses and demo results link to `/requests?request=<id>`, which searches retained history automatically, prefilters, and expands the matching record. If the gateway no longer retains that ID, show an explicit unavailable message. Playground stays mounted while hidden on other pages, preserving output and operation state. Provider counters here are lifetime counters. Fault controls require local demo mode and a fake provider. Requests, failover runs, and provider configuration changes share one operation state so their controls cannot compete.
 
-### Navigation
+**The Measurement Scope Rule.** Keep lifetime, retained, and latest-100 evidence visibly distinct. Loading earlier explorer records does not expand overview charts.
 
-Three ordinary links use outlined SVG icons, muted text, and a (42px) minimum height. Hover brightens the text and darkens its local surface. `aria-current="page"` marks the mint-on-green current item. On mobile the links share the strip width equally. The connection footer moves beside the brand and keeps text alongside its status dot.
+Overview client totals, success/received ratio, estimated spend, attempts, and fallbacks are lifetime values. Its p95/p50 come from retained latency samples. All four chart panels use the latest 100 request records: latency plots non-rejected durations by start time; outcomes include success, error, rejected, and canceled; distribution uses eight duration buckets excluding rejections. Provider traffic compares final uncached routes with all attempts, including unsuccessful attempts. Circuit state is current snapshot evidence, independent of that chart window. Cache hits have no provider attempt. Charts include SVG summaries, axes, legends where applicable, and per-observation titles on latency points and histogram buckets.
 
-### Status badges
+Budgets show lifetime estimated spend plus active reservations, remaining balance, and configured limits. Meter widths cap at the available track. Zero budgets and committed budgets have explicit text; cache totals remain lifetime counters. Costs retain six decimal places in USD.
 
-Compact text badges use the badge token and good/warn/bad variants. They are informational labels, not filter chips or action pills. State words remain visible; color is supplementary. No custom badge hover or pressed state exists.
+Feed states are loading, live, stale, and offline. Polling retries every two seconds while the tab is visible. Initial failure shows an alert with retry; stale state keeps last-known data and labels it. Empty charts/tables explain how to create observations; filtered-empty and never-used states differ. Paging errors remain visible beside retained records.
 
-### Sections and response container
-
-Routing, metrics, activity, budgets, and demo controls are flat sections. The response container is the recurring bordered card treatment: a title and state badge above wrapping monospace output, with completion metadata separated below. Ready, streaming, completed, interrupted, and error are distinct. Partial text remains visible after interruption; completion metadata requires a validated done event. Output display is capped at (32,000 characters).
-
-### Evidence tables and request disclosure
-
-Tables use uppercase small headings, subdued heading backgrounds, and row separators. Hover lightly tints ordinary rows. A disclosure button rotates its arrow (90deg) when expanded and exposes `aria-expanded`. The inset detail row lists provider attempts, identifiers, timings, usage provenance, and errors. Cached requests with no attempt and requests ending before routing have distinct explanations. Full request activity exposes search/outcome filters and paging; compact recent activity shows the latest eight records without those filters.
-
-### Data, empty, and failure states
-
-Loading shows a centered status message. Feed failure before data arrives shows an amber alert and retry; failure after a successful snapshot preserves last-known evidence and labels it stale. The live badge, updated time, and connection text remain explicit. Empty charts and tables use concise text and an action cue, without placeholder data. The duration histogram is SVG with eight buckets derived from retained non-rejected requests, labeled axes, an accessible summary, and per-bar titles.
-
-Provider controls distinguish idle, pending, applied, and error; pending disables that provider's presets. Circuit recovery copy identifies when a later request can test recovery. Demo progress and results remain visible, with error alerts and an available Stop demo action while pending. Budget and cache summaries use aligned numeric evidence and label costs as estimated.
+Response states are Ready, streaming, completed, interrupted, and error. Partial output remains after interruption; completion metadata appears only for completed output. Display is limited to 32,000 characters. Conflicting request/demo actions and fields disable while busy; Stop remains available for the active operation. Provider changes show pending, applied, or error and disable that provider's presets while pending. Demo progress/results persist, and interrupted/error copy warns that applied provider settings may remain in effect. Recovery requires a subsequent request after cooldown.
 
 ## Do's and Don'ts
 
-### Do:
+### Do
 
-- **Do** reuse the documented control, field, badge, and response treatments.
-- **Do** pair status colors with labels and preserve visible keyboard focus.
-- **Do** wrap long output and identifiers; keep wide tables inside their own scroll regions.
-- **Do** preserve empty, stale, pending, interrupted, and error messages as distinct states.
+- Keep a black workspace and reuse the charcoal panel, field, control, and badge treatments.
+- Keep observation scopes, units, estimated-cost labels, and usage provenance visible.
+- Preserve page separation, local table scrolling, wrapped output, and keyboard focus.
+- Distinguish empty, filtered-empty, stale, pending, interrupted, and completed states.
 
-### Don't:
+### Don't
 
-- **Don't** introduce gradients, glow, decorative illustrations, or marketing copy.
-- **Don't** replace missing observations with invented traffic or a decorative chart.
-- **Don't** present partial streaming output as a completed response.
-- **Don't** assume Inter is bundled; the implementation uses a system fallback stack.
+- Fill empty charts with invented traffic or represent synthetic providers as paid observations.
+- Compare request counts and provider attempts as if they were the same quantity.
+- Present a partial stream as completed or a restored provider setting as confirmed circuit recovery.
+- Add gradients, ambient shadows, decorative imagery, or marketing sections to the console.

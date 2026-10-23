@@ -1,21 +1,21 @@
-# Dashboard surface
+# Dashboard direction
 
-Mode is Operate. The user selected React, TypeScript, Vite, dark mode, and a minimal appearance. The dashboard helps an interviewer inspect real gateway behavior and run a failure demonstration.
+Mode is Operate. The user asked for a full redesign with a black background, clear explanations, and more visualizations.
 
 ## Direction contract
 
-THESIS: Make the relationship between client requests and provider attempts visible. Provider routing and request evidence lead; the streaming playground is the primary action.
+THESIS: Let the operator understand gateway behavior before changing it. Overview monitors, Requests investigates, and Playground runs experiments.
 
-OWN-WORLD: Graphite backgrounds, quiet hairline separators, a compact system sans, tabular measurements, restrained cool-green actions, and amber/red only for meaningful failure states. No gradients, glow, decorative illustrations, or marketing copy.
+OWN-WORLD: A black canvas, neutral charcoal work areas, bright readable type, precise charts, and restrained mint actions. Amber and red identify degraded and failed states. Ordinary form controls and descriptive text explain each action.
 
-STORY: Inspect current health, send a request, interrupt the primary provider, and follow the resulting attempts. Empty, stale, rejected, cached, and interrupted states remain explicit.
+STORY: Send a request, see its outcome, inspect its provider attempts, then change a fake provider to understand fallback. No traffic exists until a real local request runs.
 
-FIRST VIEWPORT: A narrow desktop navigation rail, page title and live status, one horizontal metrics strip, provider routing beside request-latency evidence, then a compact request table. A clearly labeled playground and failure controls sit within the same app. Narrow screens use a top navigation strip and stacked work areas.
+FIRST VIEWPORT: Desktop navigation beside an overview title and connection status. Gateway totals precede latency and outcome evidence, with provider routing and recent requests following. A visible action opens the playground. Small screens stack content below navigation.
 
-FORM: Engineering field notes, the fifth grounded direction, expressed through aligned evidence and concise annotations. The fixed user brief takes precedence over the concept roll's decorative challengers. Seed reference is seed:5207c7a0150c4866. Other considered systems were journal indexes, transit schedules, scientific plot sheets, library catalogs, audit ledgers, and classroom experiment reports.
+FORM: A focused statistical report, with aligned values, explicit observation scopes, and plotted evidence. The user's black-background brief fixes the palette. Seed reference is seed:b5d185d85a9e632c.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 ## Implementation boundary
 
-Frontend source is `web/`. Compiled assets and their Go embedding handler live in `internal/dashboard/`. The shared API is documented in `docs/api-contract.md`. The dashboard never invents traffic, uses no paid provider, and stores no provider secret. Use ordinary accessible buttons, forms, tables, and tabs. All data visualizations derive from observed request records.
+Frontend source is `web/`. Compiled assets and the Go embedding handler live in `internal/dashboard/`. The dashboard uses real gateway observations, labels estimated costs, and never invents traffic.
